@@ -1,0 +1,6 @@
+{
+  "it": "http://tepmapp12/inframanager/SD/ServiceCatalogue",
+  "wiki": "http://tepmapp25:5003/doku.php?id=start",
+  "skud": "file://tep-m.ru/data/App/TimeSheet/skud/skud.run.cmd",
+  "sprut": "file://tep-m.ru/data/App/TimeSheet/sprut/sprut.run.cmd"
+}

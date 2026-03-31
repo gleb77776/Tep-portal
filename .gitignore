@@ -1,0 +1,28 @@
+# Секреты и локальная среда
+backend/.env
+*.local
+.env
+.env.*.local
+
+# Зависимости и сборка
+node_modules/
+frontend/dist/
+frontend/dist-ssr/
+
+# Go
+*.exe
+*.test
+*.out
+/vendor/
+
+# Логи и ОС
+*.log
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Временное
+*.swp
+*.tmp

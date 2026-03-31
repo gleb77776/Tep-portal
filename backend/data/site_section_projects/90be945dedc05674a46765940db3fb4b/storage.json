@@ -1,0 +1,24 @@
+{
+  "projects": [
+    {
+      "id": "Test",
+      "title": "Test",
+      "visible": true,
+      "author": "Батяновский Глеб Вадимович",
+      "createdAt": "2026-03-23T06:10:42Z",
+      "source": "admin"
+    }
+  ],
+  "docsByProject": {
+    "Test": [
+      {
+        "id": "51dea0925008cb75b0199e53",
+        "name": "0292_4__19_03_2026.pdf",
+        "ext": "pdf",
+        "file": "51dea0925008cb75b0199e53_0292_4__19_03_2026.pdf",
+        "addedBy": "Батяновский Глеб Вадимович",
+        "addedAt": "2026-03-23T06:10:48Z"
+      }
+    ]
+  }
+}

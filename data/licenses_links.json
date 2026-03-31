@@ -1,0 +1,12 @@
+[
+  {
+    "id": 1,
+    "title": "Aveva",
+    "url": "http://tepmapp25:5004/aveva-license.html"
+  },
+  {
+    "id": 2,
+    "title": "Расчетное ПО",
+    "url": "http://tepmapp25:5004/sentinel-license.html"
+  }
+]

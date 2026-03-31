@@ -1,0 +1,57 @@
+[
+  {
+    "id": 12,
+    "name": "Внешний сайт ТЭП",
+    "url": "https://www.tek-mosenergo.ru/company/ao_institut_teploelektroproekt/#"
+  },
+  {
+    "id": 2,
+    "name": "Телефонный справочник АО \"ТЭК Мосэнерго\"",
+    "url": "https://www.mosenergo.ru"
+  },
+  {
+    "id": 3,
+    "name": "Телефонный справочник Эннова",
+    "url": "https://www.enova.ru"
+  },
+  {
+    "id": 4,
+    "name": "Трест Гидромонтаж",
+    "url": "https://www.gidromontage.ru"
+  },
+  {
+    "id": 5,
+    "name": "Сбербанк России",
+    "url": "https://sberbank.ru"
+  },
+  {
+    "id": 6,
+    "name": "Банк Тинькофф",
+    "url": "https://www.tinkoff.ru"
+  },
+  {
+    "id": 7,
+    "name": "Пробки на Яндекс.Картах",
+    "url": "https://yandex.ru/maps/?l=trf"
+  },
+  {
+    "id": 8,
+    "name": "ЯндексРасписание",
+    "url": "https://rasp.yandex.ru"
+  },
+  {
+    "id": 9,
+    "name": "Переводчик Google",
+    "url": "https://translate.google.com"
+  },
+  {
+    "id": 10,
+    "name": "Переводчик Промт",
+    "url": "https://www.online-translator.com"
+  },
+  {
+    "id": 11,
+    "name": "Шаблоны проектной документации",
+    "url": "file://tep-m.ru/data/Шаблоны/"
+  }
+]

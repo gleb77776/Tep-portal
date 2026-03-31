@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=375, user-scalable=no">
+  <title>ТепПортал — Мобильное приложение</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1a1a2e; min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 20px; }
+    .phone-frame {
+      width: 375px;
+      height: 667px;
+      background: #fff;
+      border-radius: 36px;
+      overflow: hidden;
+      box-shadow: 0 25px 80px rgba(0,0,0,0.4);
+      border: 8px solid #222;
+    }
+    .status-bar {
+      height: 44px;
+      background: #1e5cb0;
+      color: white;
+      font-size: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 24px;
+      font-weight: 500;
+    }
+    .content {
+      height: calc(667px - 44px - 70px);
+      overflow-y: auto;
+      background: #f5f9ff;
+    }
+    .header {
+      background: #1e5cb0;
+      color: white;
+      padding: 16px 20px;
+    }
+    .header h1 { font-size: 20px; font-weight: 700; }
+    .header p { font-size: 12px; opacity: 0.9; margin-top: 4px; }
+    .section {
+      padding: 16px 20px;
+    }
+    .section-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1e5cb0;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .search-box {
+      background: white;
+      border: 2px solid #4aa8d8;
+      border-radius: 12px;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .search-box span { font-size: 18px; }
+    .search-box input {
+      flex: 1;
+      border: none;
+      font-size: 15px;
+      outline: none;
+    }
+    .search-box input::placeholder { color: #999; }
+    .news-card {
+      background: white;
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-bottom: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      border-left: 4px solid #4aa8d8;
+    }
+    .news-card h3 { font-size: 14px; color: #333; margin-bottom: 4px; }
+    .news-card p { font-size: 12px; color: #666; }
+    .news-card .date { font-size: 11px; color: #999; margin-top: 6px; }
+    .task-item {
+      background: white;
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .task-item .icon { font-size: 24px; }
+    .task-item .text { flex: 1; }
+    .task-item .text strong { font-size: 13px; color: #333; display: block; }
+    .task-item .text span { font-size: 11px; color: #666; }
+    .task-item .badge {
+      background: #ffc107;
+      color: #333;
+      font-size: 10px;
+      padding: 4px 8px;
+      border-radius: 8px;
+      font-weight: 600;
+    }
+    .bottom-nav {
+      height: 70px;
+      background: white;
+      border-top: 1px solid #e0e0e0;
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      padding-bottom: env(safe-area-inset-bottom, 0);
+    }
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      color: #999;
+      font-size: 10px;
+      cursor: pointer;
+    }
+    .nav-item.active { color: #1e5cb0; font-weight: 600; }
+    .nav-item span:first-child { font-size: 22px; }
+  </style>
+</head>
+<body>
+  <div class="phone-frame">
+    <div class="status-bar">
+      <span>9:41</span>
+      <span>📶 📡 🔋</span>
+    </div>
+    <div class="content">
+      <div class="header">
+        <h1>ТепПортал</h1>
+        <p>НПС // ИНСТИТУТ ТЕПЛОЭЛЕКТРОПРОЕКТ</p>
+      </div>
+      <div class="section">
+        <div class="section-title">🔍 Поиск по справочнику</div>
+        <div class="search-box">
+          <span>🔍</span>
+          <input type="text" placeholder="ФИО, отдел, телефон...">
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-title">📰 Последние новости</div>
+        <div class="news-card">
+          <h3>Обновление корпоративного портала</h3>
+          <p>Запущена новая версия портала с улучшенным разделом проектов и диаграмм.</p>
+          <div class="date">25.02.2026</div>
+        </div>
+        <div class="news-card">
+          <h3>Совещание по проектам 141 и 261</h3>
+          <p>Планируется встреча с заказчиком по актуализации документации.</p>
+          <div class="date">24.02.2026</div>
+        </div>
+        <div class="news-card">
+          <h3>Переход на единую систему документооборота</h3>
+          <p>С 1 марта все согласования будут проходить через портал.</p>
+          <div class="date">20.02.2026</div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-title">✅ Задачи на согласование</div>
+        <div class="task-item">
+          <span class="icon">📄</span>
+          <div class="text">
+            <strong>План размещения оборудования.dwg</strong>
+            <span>Проект 141 • Иванов И.И.</span>
+          </div>
+          <span class="badge">Новая</span>
+        </div>
+        <div class="task-item">
+          <span class="icon">📄</span>
+          <div class="text">
+            <strong>Спецификация оборудования.xlsx</strong>
+            <span>Проект 144 • Петров П.П.</span>
+          </div>
+          <span class="badge">Новая</span>
+        </div>
+        <div class="task-item">
+          <span class="icon">📄</span>
+          <div class="text">
+            <strong>Схема теплоснабжения.pdf</strong>
+            <span>Проект 261 • Сидоров С.С.</span>
+          </div>
+          <span class="badge">2 дн.</span>
+        </div>
+      </div>
+    </div>
+    <div class="bottom-nav">
+      <div class="nav-item active">
+        <span>🏠</span>
+        <span>Главная</span>
+      </div>
+      <div class="nav-item">
+        <span>📁</span>
+        <span>Проекты</span>
+      </div>
+      <div class="nav-item">
+        <span>📞</span>
+        <span>Телефоны</span>
+      </div>
+      <div class="nav-item">
+        <span>✓</span>
+        <span>Задачи</span>
+      </div>
+      <div class="nav-item">
+        <span>⋯</span>
+        <span>Ещё</span>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,30 @@
+/* src/index.css */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background-color: #f5f9ff;
+  font-family: 'Arial', sans-serif;
+  min-height: 100vh;
+  color: #1e5cb0;
+  overflow-x: hidden;
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+}
+
+/* Тема задаётся на documentElement в App; дублируем здесь, чтобы перекрыть светлый body до загрузки дочерних стилей */
+[data-theme='dark'] body {
+  background-color: #1a1d24;
+  color: #e0e4e8;
+}
+
+[data-theme='dark'] #root {
+  background-color: #1a1d24;
+  min-height: 100vh;
+}

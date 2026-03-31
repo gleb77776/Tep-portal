@@ -1,0 +1,28 @@
+[
+  {
+    "id": 1,
+    "icon": "📄",
+    "title": "Рост энергетической отрасли невозможны без проектирования, строительства и модернизации электростанций. В профессиональный праздник, День энергетика, сотрудники «ТЭК Мосэнерго» отмечены наградами Минэнерго Российской Федерации за вклад в развитие ключевой отрасли промышленности и многолетний добросовестный труд.",
+    "date": "26 января 2026 г. • 14:38",
+    "badge": "New"
+  },
+  {
+    "id": 4,
+    "icon": "👥",
+    "title": "Test",
+    "date": "21 марта 2026 г. г. • 12:40"
+  },
+  {
+    "id": 2,
+    "icon": "🎉",
+    "title": "«Институт Теплоэлектропроект» (входит в Нацпроектстрой) расширил географию своего присутствия, открыв филиал в Казани и обособленное подразделение в Кемерово.",
+    "date": "25 января 2026 г. • 10:00"
+  },
+  {
+    "id": 3,
+    "icon": "💡",
+    "title": "TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST TEST",
+    "date": "19 марта 2026 г. г. • 11:35",
+    "badge": "TEST"
+  }
+]

@@ -4,15 +4,19 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import LogoHeader from '../components/LogoHeader';
 import { loginAd } from '../api/client';
+import { useTheme } from '../context/ThemeContext';
 import type { RootStackParamList } from '../navigation/types';
 
 const USERNAME_KEY = 'ad_username';
@@ -20,6 +24,7 @@ const USERNAME_KEY = 'ad_username';
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 
 export default function LoginScreen({ navigation }: Props) {
+  const { colors } = useTheme();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -43,76 +48,100 @@ export default function LoginScreen({ navigation }: Props) {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.wrap}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <Text style={styles.title}>Корпоративный портал</Text>
-      <Text style={styles.hint}>Учётная запись Active Directory (как на сайте)</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Логин (sAMAccountName)"
-        autoCapitalize="none"
-        autoCorrect={false}
-        value={username}
-        onChangeText={setUsername}
-        editable={!loading}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Пароль"
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-        editable={!loading}
-      />
-      <TouchableOpacity style={styles.btn} onPress={onSubmit} disabled={loading}>
-        {loading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.btnText}>Войти</Text>
-        )}
-      </TouchableOpacity>
-    </KeyboardAvoidingView>
+    <SafeAreaView style={[styles.safe, { backgroundColor: colors.screenBg }]} edges={['top']}>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <LogoHeader subtitle="Корпоративный портал" />
+          <Text style={[styles.hint, { color: colors.textMuted }]}>
+            Учётная запись Active Directory (как на сайте)
+          </Text>
+          <View style={styles.form}>
+            <TextInput
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.inputBg,
+                  borderColor: colors.inputBorder,
+                  color: colors.textSecondary,
+                },
+              ]}
+              placeholder="Логин (sAMAccountName)"
+              placeholderTextColor={colors.textMuted}
+              autoCapitalize="none"
+              autoCorrect={false}
+              value={username}
+              onChangeText={setUsername}
+              editable={!loading}
+            />
+            <TextInput
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.inputBg,
+                  borderColor: colors.inputBorder,
+                  color: colors.textSecondary,
+                },
+              ]}
+              placeholder="Пароль"
+              placeholderTextColor={colors.textMuted}
+              secureTextEntry
+              value={password}
+              onChangeText={setPassword}
+              editable={!loading}
+            />
+            <TouchableOpacity
+              style={[styles.btn, { backgroundColor: colors.buttonPrimary }]}
+              onPress={onSubmit}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color={colors.buttonPrimaryText} />
+              ) : (
+                <Text style={[styles.btnText, { color: colors.buttonPrimaryText }]}>Войти</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: {
-    flex: 1,
-    justifyContent: 'center',
-    padding: 24,
-    backgroundColor: '#f4f6f8',
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: '700',
-    marginBottom: 8,
-    textAlign: 'center',
-    color: '#1a1a1a',
+  safe: { flex: 1 },
+  flex: { flex: 1 },
+  scrollContent: {
+    paddingBottom: 32,
+    paddingTop: 8,
   },
   hint: {
     fontSize: 14,
-    color: '#666',
     textAlign: 'center',
-    marginBottom: 24,
+    marginTop: 4,
+    marginBottom: 20,
+    paddingHorizontal: 20,
   },
+  form: { paddingHorizontal: 24 },
   input: {
-    backgroundColor: '#fff',
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#dde1e6',
   },
   btn: {
-    backgroundColor: '#0b5fff',
     borderRadius: 10,
     paddingVertical: 14,
     alignItems: 'center',
     marginTop: 8,
   },
-  btnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  btnText: { fontSize: 16, fontWeight: '600' },
 });

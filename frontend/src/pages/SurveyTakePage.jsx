@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { backendUrl } from '../backendUrl';
+import { backendUrl, withAdUsernameQuery } from '../backendUrl';
 
 function SurveyTakePage() {
   const { id } = useParams();
@@ -18,7 +18,10 @@ function SurveyTakePage() {
     setDone(false);
     setAnswers({});
     try {
-      const res = await fetch(backendUrl(`/api/v1/survey/${encodeURIComponent(id)}`));
+      const url = withAdUsernameQuery(backendUrl(`/api/v1/survey/${encodeURIComponent(id)}`));
+      const res = await fetch(url, {
+        credentials: 'include',
+      });
       if (res.status === 404) {
         setError('Опрос не найден или ещё не опубликован.');
         setSurvey(null);
@@ -81,12 +84,20 @@ function SurveyTakePage() {
     setSubmitting(true);
     setError('');
     try {
-      const res = await fetch(backendUrl(`/api/v1/survey/${encodeURIComponent(id)}/submit`), {
+      const submitUrl = withAdUsernameQuery(backendUrl(`/api/v1/survey/${encodeURIComponent(id)}/submit`));
+      const res = await fetch(submitUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ answers }),
       });
       const j = await res.json().catch(() => ({}));
+      if (res.status === 403) {
+        throw new Error(j.error || 'Войдите в портал, чтобы отправить ответ');
+      }
+      if (res.status === 409) {
+        throw new Error(j.error || 'Вы уже отправили ответ на этот опрос');
+      }
       if (!res.ok) {
         throw new Error(j.error || 'Не удалось отправить ответы');
       }
@@ -115,17 +126,39 @@ function SurveyTakePage() {
     );
   }
 
-  if (done) {
+  if (done || survey?.alreadySubmitted) {
     return (
       <div className="survey-take-page">
         <h1 className="survey-take-title">Спасибо!</h1>
-        <p className="survey-take-muted">Ваши ответы записаны.</p>
+        <p className="survey-take-muted">
+          {survey?.alreadySubmitted && !done
+            ? 'Вы уже отправляли ответ на этот опрос.'
+            : 'Ваши ответы записаны.'}
+        </p>
         <Link to="/">На главную</Link>
       </div>
     );
   }
 
   if (!survey) return null;
+
+  if (survey.needsPortalUser) {
+    return (
+      <div className="survey-take-page">
+        <h1 className="survey-take-title">{survey.title}</h1>
+        {survey.description ? <p className="survey-take-desc">{survey.description}</p> : null}
+        <div className="survey-take-login-hint">
+          <p>
+            Этот опрос принимает один ответ от каждого пользователя портала. Чтобы пройти его, войдите в портал (логин и пароль
+            домена) и откройте эту ссылку снова.
+          </p>
+          <Link to="/" className="survey-take-login-link">
+            На главную — войти
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="survey-take-page">

@@ -28,22 +28,44 @@ type SurveyQuestion struct {
 }
 
 type Survey struct {
-	ID          string           `json:"id"`
-	Title       string           `json:"title"`
-	Description string           `json:"description,omitempty"`
-	Published   bool             `json:"published"`
-	CreatedAt   string           `json:"createdAt"`
-	Questions   []SurveyQuestion `json:"questions"`
+	ID          string `json:"id"`
+	Title       string `json:"title"`
+	Description string `json:"description,omitempty"`
+	Published   bool   `json:"published"`
+	// Если true — один ответ на учётную запись портала (как в getUsernameFromRequest).
+	OneSubmissionPerVisitor bool             `json:"oneSubmissionPerVisitor"`
+	CreatedAt               string           `json:"createdAt"`
+	Questions               []SurveyQuestion `json:"questions"`
 }
 
 type SurveyResponse struct {
 	ID          string         `json:"id"`
 	SurveyID    string         `json:"surveyId"`
 	SubmittedAt string         `json:"submittedAt"`
+	SubmittedBy string         `json:"submittedBy,omitempty"` // нормализованный логин портала
 	Answers     map[string]any `json:"answers"`
 }
 
 var surveysMu sync.RWMutex
+
+func surveyRespondentUsername(c *gin.Context) string {
+	return normalizeSAMAccountName(getUsernameFromRequest(c))
+}
+
+func responseListHasUserSubmission(list []SurveyResponse, surveyID, normUser string) bool {
+	if normUser == "" {
+		return false
+	}
+	for i := range list {
+		if list[i].SurveyID != surveyID {
+			continue
+		}
+		if normalizeSAMAccountName(list[i].SubmittedBy) == normUser {
+			return true
+		}
+	}
+	return false
+}
 
 func getSurveysDataPath() string {
 	if p := strings.TrimSpace(os.Getenv("SURVEYS_DATA_PATH")); p != "" {
@@ -228,6 +250,10 @@ func GetPublicSurvey(c *gin.Context) {
 	}
 	surveysMu.RLock()
 	list, err := loadSurveys()
+	var respList []SurveyResponse
+	if err == nil {
+		respList, err = loadSurveyResponses()
+	}
 	surveysMu.RUnlock()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -238,10 +264,26 @@ func GetPublicSurvey(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "survey not found"})
 		return
 	}
-	c.JSON(http.StatusOK, s)
+	user := surveyRespondentUsername(c)
+	alreadySubmitted := s.OneSubmissionPerVisitor && responseListHasUserSubmission(respList, id, user)
+	raw, err := json.Marshal(s)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	payload["alreadySubmitted"] = alreadySubmitted
+	if s.OneSubmissionPerVisitor {
+		payload["needsPortalUser"] = user == ""
+	}
+	c.JSON(http.StatusOK, payload)
 }
 
-// SubmitSurveyResponse — отправка ответов без авторизации.
+// SubmitSurveyResponse — публичная отправка ответов; пользователь определяется как в /user/me (query username, заголовки SSO).
 func SubmitSurveyResponse(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))
 	if id == "" {
@@ -270,6 +312,22 @@ func SubmitSurveyResponse(c *gin.Context) {
 	if survey == nil || !survey.Published {
 		c.JSON(http.StatusNotFound, gin.H{"error": "survey not found"})
 		return
+	}
+	respondent := surveyRespondentUsername(c)
+	respList, err := loadSurveyResponses()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if survey.OneSubmissionPerVisitor {
+		if respondent == "" {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Войдите в портал (учётная запись), чтобы отправить ответ"})
+			return
+		}
+		if responseListHasUserSubmission(respList, id, respondent) {
+			c.JSON(http.StatusConflict, gin.H{"error": "Вы уже отправили ответ на этот опрос"})
+			return
+		}
 	}
 	for _, q := range survey.Questions {
 		raw, ok := body.Answers[q.ID]
@@ -330,15 +388,11 @@ func SubmitSurveyResponse(c *gin.Context) {
 		}
 	}
 
-	respList, err := loadSurveyResponses()
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
 	rec := SurveyResponse{
 		ID:          uuid.New().String(),
 		SurveyID:    id,
 		SubmittedAt: time.Now().UTC().Format(time.RFC3339),
+		SubmittedBy: respondent,
 		Answers:     body.Answers,
 	}
 	respList = append(respList, rec)

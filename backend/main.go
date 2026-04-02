@@ -126,6 +126,10 @@ func main() {
 			c.JSON(200, gin.H{"ok": true})
 		})
 
+		// Опросы: публичное прохождение без авторизации (только опубликованные).
+		api.GET("/survey/:id", handlers.GetPublicSurvey)
+		api.POST("/survey/:id/submit", handlers.SubmitSurveyResponse)
+
 		admin := api.Group("/admin", handlers.RequireAdmin)
 		{
 			admin.GET("/users", handlers.RequireAdministrator, handlers.ListAdminUsers)
@@ -197,6 +201,13 @@ func main() {
 			admin.PUT("/licenses-links/:id", handlers.RequireAdministrator, handlers.AdminUpdateLicenseLink)
 			admin.DELETE("/licenses-links/:id", handlers.RequireAdministrator, handlers.AdminDeleteLicenseLink)
 			admin.POST("/licenses-links/reorder", handlers.RequireAdministrator, handlers.AdminReorderLicenseLinks)
+
+			admin.GET("/surveys", handlers.RequireAdministrator, handlers.ListSurveysAdmin)
+			admin.GET("/survey-responses", handlers.RequireAdministrator, handlers.ListAllSurveyResponsesAdmin)
+			admin.POST("/surveys", handlers.RequireAdministrator, handlers.CreateSurvey)
+			admin.PUT("/surveys/:id", handlers.RequireAdministrator, handlers.UpdateSurvey)
+			admin.DELETE("/surveys/:id", handlers.RequireAdministrator, handlers.DeleteSurvey)
+			admin.GET("/surveys/:id/responses", handlers.RequireAdministrator, handlers.ListSurveyResponses)
 		}
 	}
 

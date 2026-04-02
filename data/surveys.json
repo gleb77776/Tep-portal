@@ -1,0 +1,33 @@
+[
+  {
+    "id": "2ec91ba9-5429-42db-9b90-7c8023236a90",
+    "title": "Тест",
+    "published": false,
+    "createdAt": "2026-04-02T08:50:13Z",
+    "questions": [
+      {
+        "id": "q_b7de301b",
+        "type": "single",
+        "text": "Тест",
+        "options": [
+          "Да",
+          "Нет"
+        ]
+      },
+      {
+        "id": "q_9567e09e",
+        "type": "multiple",
+        "text": "Тесст",
+        "options": [
+          "Вариант 1",
+          "Вариант 2"
+        ]
+      },
+      {
+        "id": "q_58b51870",
+        "type": "text",
+        "text": "Тест"
+      }
+    ]
+  }
+]

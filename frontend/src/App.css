@@ -3303,3 +3303,97 @@ body.admin-hide-scrollbar .center-content::-webkit-scrollbar {
   background: #5a9bd5;
   color: #0f172a;
 }
+
+/* Публичная страница прохождения опроса */
+.survey-take-page {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+}
+.survey-take-title {
+  font-size: 1.5rem;
+  margin: 0 0 12px;
+  color: var(--text-primary, #1a1a1a);
+}
+.survey-take-desc {
+  margin: 0 0 24px;
+  color: var(--text-secondary, #555);
+  line-height: 1.5;
+}
+.survey-take-muted {
+  color: var(--text-secondary, #666);
+}
+.survey-take-error {
+  color: #c00;
+  margin: 12px 0;
+}
+.survey-take-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.survey-take-block {
+  border: 1px solid var(--border-color, rgba(0, 0, 0, 0.12));
+  border-radius: 10px;
+  padding: 16px 16px 20px;
+  margin: 0 0 16px;
+  min-width: 0;
+}
+.survey-take-q-title {
+  font-weight: 600;
+  padding: 0 0 12px;
+  margin: 0;
+  font-size: 1rem;
+}
+.survey-take-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color, rgba(0, 0, 0, 0.15));
+  font: inherit;
+  resize: vertical;
+  min-height: 96px;
+  background: var(--input-bg, #fff);
+  color: var(--text-primary, #1a1a1a);
+}
+.survey-take-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 8px 0;
+  cursor: pointer;
+  line-height: 1.4;
+}
+.survey-take-option input {
+  margin-top: 4px;
+}
+.survey-take-submit {
+  margin-top: 8px;
+  padding: 12px 24px;
+  border-radius: 8px;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--accent, #2563eb);
+  color: #fff;
+}
+.survey-take-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+[data-theme='dark'] .survey-take-title {
+  color: #e8eaed;
+}
+[data-theme='dark'] .survey-take-desc,
+[data-theme='dark'] .survey-take-muted {
+  color: #9ca3af;
+}
+[data-theme='dark'] .survey-take-block {
+  border-color: #3d4553;
+}
+[data-theme='dark'] .survey-take-textarea {
+  background: #252a33;
+  border-color: #3d4553;
+  color: #e8eaed;
+}

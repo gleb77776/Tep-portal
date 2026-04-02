@@ -67,6 +67,15 @@ function AdminHomePage() {
             </div>
           </Link>
         )}
+        {cr === 'administrator' && (
+          <Link to="/admin/surveys" className="admin-home-card">
+            <div className="admin-home-card-icon">📋</div>
+            <div className="admin-home-card-text">
+              <div className="admin-home-card-title">Опросы</div>
+              <div className="admin-home-card-subtitle">Создание опросов и ссылок для прохождения</div>
+            </div>
+          </Link>
+        )}
         {access.canManageUsers && (
           <Link to="/admin/users" className="admin-home-card">
             <div className="admin-home-card-icon">👥</div>

@@ -36,6 +36,8 @@ import AdminDynamicDocsPage from './pages/AdminDynamicDocsPage';
 import AdminSectionMenuPage from './pages/AdminSectionMenuPage';
 import AdminSectionProjectsPage from './pages/AdminSectionProjectsPage';
 import AdminUsersPage from './pages/AdminUsersPage';
+import AdminSurveysPage from './pages/AdminSurveysPage';
+import SurveyTakePage from './pages/SurveyTakePage';
 import AdminProtectedLayout from './components/AdminProtectedLayout';
 import { AdminAccessContext } from './context/AdminAccessContext';
 import { parseJsonResponse } from './utils/parseJsonResponse';
@@ -343,6 +345,7 @@ function App() {
               <Route path="/forms" element={<FormsPage onOpenDocument={setSelectedDocument} />} />
               <Route path="/training" element={<TrainingPage onOpenDocument={setSelectedDocument} />} />
               <Route path="/licenses" element={<LicensesPage />} />
+              <Route path="/survey/:id" element={<SurveyTakePage />} />
               <Route
                 path="/s/:slug/project/:projectId"
                 element={
@@ -370,6 +373,7 @@ function App() {
                 <Route path="section-menu/:sectionId" element={<AdminSectionMenuPage />} />
                 <Route path="section-projects/:slug" element={<AdminSectionProjectsPage onOpenDocument={setSelectedDocument} />} />
                 <Route path="users" element={<AdminUsersPage />} />
+                <Route path="surveys" element={<AdminSurveysPage />} />
                 <Route path="licenses" element={<Navigate to="/admin/section-menu/licenses" replace />} />
               </Route>
             </Routes>

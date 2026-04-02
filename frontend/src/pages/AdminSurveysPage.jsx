@@ -81,8 +81,6 @@ function AdminSurveysPage() {
   const [error, setError] = useState('');
   const [copiedId, setCopiedId] = useState(null);
   const [draft, setDraft] = useState(null);
-  const [expandedResponsesId, setExpandedResponsesId] = useState(null);
-  const [responsesFor, setResponsesFor] = useState([]);
 
   const isAdmin = access && canonicalAdminRole(access) === 'administrator';
 
@@ -240,29 +238,37 @@ function AdminSurveysPage() {
         headers: getAuthHeaders(),
       });
       if (!res.ok) throw new Error('Не удалось удалить');
-      if (expandedResponsesId === surveyId) {
-        setExpandedResponsesId(null);
-        setResponsesFor([]);
-      }
       await load();
     } catch (e) {
       setError(e.message || 'Ошибка');
     }
   };
 
-  const loadResponsesFor = async (surveyId) => {
-    if (expandedResponsesId === surveyId) {
-      setExpandedResponsesId(null);
-      setResponsesFor([]);
-      return;
-    }
-    setExpandedResponsesId(surveyId);
-    setResponsesFor([]);
+  const downloadResponsesExcel = async (surveyId, title) => {
+    setError('');
     try {
-      const res = await fetch(adminApiUrl(`/surveys/${surveyId}/responses`), { headers: getAuthHeaders() });
-      if (!res.ok) throw new Error('Ошибка загрузки ответов');
-      const data = await res.json();
-      setResponsesFor(Array.isArray(data) ? data : []);
+      const res = await fetch(adminApiUrl(`/surveys/${surveyId}/responses/export`), { headers: getAuthHeaders() });
+      const ct = res.headers.get('Content-Type') || '';
+      if (!res.ok) {
+        if (ct.includes('application/json')) {
+          const j = await res.json().catch(() => ({}));
+          throw new Error(j.error || 'Не удалось сформировать Excel');
+        }
+        throw new Error('Не удалось сформировать Excel');
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const safe = String(title || 'opros')
+        .replace(/[\\/:*?"<>|]/g, '_')
+        .trim()
+        .slice(0, 80);
+      a.download = `${safe || 'opros'}_${surveyId.slice(0, 8)}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
     } catch (e) {
       setError(e.message || 'Ошибка');
     }
@@ -326,8 +332,8 @@ function AdminSurveysPage() {
       </div>
 
       <p className="admin-form-hint" style={{ marginTop: -8, marginBottom: 16 }}>
-        Опросы в стиле коротких форм: варианты ответа и свободный текст. Ссылка для сотрудников — без входа на портал (если опрос
-        опубликован).
+        Опросы: варианты и свободный текст. Ответы смотрите только в Excel (кнопка у каждого опроса). Ссылка для сотрудников — если
+        опрос опубликован.
       </p>
 
       {error && <p className="admin-news-error">{error}</p>}
@@ -363,8 +369,13 @@ function AdminSurveysPage() {
                     <button type="button" className="smk-item__btn" onClick={() => openEdit(s)}>
                       Изменить
                     </button>
-                    <button type="button" className="smk-item__btn" onClick={() => loadResponsesFor(s.id)}>
-                      {expandedResponsesId === s.id ? 'Скрыть ответы' : 'Ответы'}
+                    <button
+                      type="button"
+                      className="smk-item__btn"
+                      onClick={() => downloadResponsesExcel(s.id, s.title)}
+                      title="Кто проходил, дата, для каждого вопроса — полный текст вопроса и ответ"
+                    >
+                      ⬇ Excel
                     </button>
                     <button
                       type="button"
@@ -374,22 +385,6 @@ function AdminSurveysPage() {
                       Удалить
                     </button>
                   </div>
-                  {expandedResponsesId === s.id && (
-                    <div style={{ width: '100%', marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border-color, rgba(0,0,0,0.08))' }}>
-                      {responsesFor.length === 0 ? (
-                        <p className="admin-form-hint">Нет ответов.</p>
-                      ) : (
-                        <ul className="admin-surveys-responses-list">
-                          {responsesFor.map((r) => (
-                            <li key={r.id}>
-                              <code className="admin-surveys-responses-meta">{r.submittedAt}</code>
-                              <pre className="admin-surveys-responses-json">{JSON.stringify(r.answers, null, 2)}</pre>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  )}
                 </div>
               ))
             )}

@@ -207,6 +207,7 @@ func main() {
 			admin.POST("/surveys", handlers.RequireAdministrator, handlers.CreateSurvey)
 			admin.PUT("/surveys/:id", handlers.RequireAdministrator, handlers.UpdateSurvey)
 			admin.DELETE("/surveys/:id", handlers.RequireAdministrator, handlers.DeleteSurvey)
+			admin.GET("/surveys/:id/responses/export", handlers.RequireAdministrator, handlers.ExportSurveyResponsesExcel)
 			admin.GET("/surveys/:id/responses", handlers.RequireAdministrator, handlers.ListSurveyResponses)
 		}
 	}

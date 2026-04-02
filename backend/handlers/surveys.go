@@ -2,15 +2,18 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/xuri/excelize/v2"
 )
 
 // Типы вопросов: single (один вариант), multiple (несколько), text (свободный ответ)
@@ -410,6 +413,149 @@ func optionContains(opts []string, v string) bool {
 		}
 	}
 	return false
+}
+
+func formatSurveyAnswerForExcel(q SurveyQuestion, raw any) string {
+	if raw == nil {
+		return ""
+	}
+	switch q.Type {
+	case SurveyQText:
+		if s, ok := raw.(string); ok {
+			return s
+		}
+	case SurveyQSingle:
+		if s, ok := raw.(string); ok {
+			return s
+		}
+	case SurveyQMultiple:
+		switch v := raw.(type) {
+		case []any:
+			parts := make([]string, 0, len(v))
+			for _, x := range v {
+				if s, ok := x.(string); ok {
+					parts = append(parts, s)
+				} else {
+					parts = append(parts, fmt.Sprint(x))
+				}
+			}
+			return strings.Join(parts, "; ")
+		case []string:
+			return strings.Join(v, "; ")
+		}
+	}
+	return fmt.Sprint(raw)
+}
+
+// ExportSurveyResponsesExcel — выгрузка ответов по опросу в .xlsx.
+func ExportSurveyResponsesExcel(c *gin.Context) {
+	surveyID := strings.TrimSpace(c.Param("id"))
+	if surveyID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "id required"})
+		return
+	}
+
+	surveysMu.RLock()
+	surveyList, err := loadSurveys()
+	if err != nil {
+		surveysMu.RUnlock()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	_, survey := findSurveyByID(surveyList, surveyID)
+	if survey == nil {
+		surveysMu.RUnlock()
+		c.JSON(http.StatusNotFound, gin.H{"error": "survey not found"})
+		return
+	}
+	allResp, err := loadSurveyResponses()
+	surveysMu.RUnlock()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	var rows []SurveyResponse
+	for _, r := range allResp {
+		if r.SurveyID == surveyID {
+			rows = append(rows, r)
+		}
+	}
+	sort.Slice(rows, func(i, j int) bool {
+		return rows[i].SubmittedAt < rows[j].SubmittedAt
+	})
+
+	f := excelize.NewFile()
+	defer func() { _ = f.Close() }()
+
+	const sheet = "Ответы"
+	if err := f.SetSheetName("Sheet1", sheet); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	_ = f.SetCellValue(sheet, "A1", "Кто проходил")
+	_ = f.SetCellValue(sheet, "B1", "Дата ответа")
+	for qi := range survey.Questions {
+		n := qi + 1
+		colText, err := excelize.ColumnNumberToName(3 + qi*2)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		colAns, err := excelize.ColumnNumberToName(4 + qi*2)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		_ = f.SetCellValue(sheet, colText+"1", fmt.Sprintf("Текст вопроса №%d", n))
+		_ = f.SetCellValue(sheet, colAns+"1", fmt.Sprintf("Ответ №%d", n))
+	}
+
+	for ri, r := range rows {
+		rowNum := ri + 2
+		who := strings.TrimSpace(r.SubmittedBy)
+		if who == "" {
+			who = "—"
+		}
+		cellA, err := excelize.CoordinatesToCellName(1, rowNum)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		cellB, err := excelize.CoordinatesToCellName(2, rowNum)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		_ = f.SetCellValue(sheet, cellA, who)
+		_ = f.SetCellValue(sheet, cellB, r.SubmittedAt)
+		for qi, q := range survey.Questions {
+			cellText, err := excelize.CoordinatesToCellName(3+qi*2, rowNum)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+			cellAns, err := excelize.CoordinatesToCellName(4+qi*2, rowNum)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+			_ = f.SetCellValue(sheet, cellText, q.Text)
+			raw := r.Answers[q.ID]
+			val := formatSurveyAnswerForExcel(q, raw)
+			_ = f.SetCellValue(sheet, cellAns, val)
+		}
+	}
+
+	buf, err := f.WriteToBuffer()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	filename := "survey_responses_" + surveyID + ".xlsx"
+	c.Header("Content-Disposition", `attachment; filename="`+filename+`"`)
+	c.Data(http.StatusOK, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buf.Bytes())
 }
 
 // ListSurveysAdmin — все опросы.

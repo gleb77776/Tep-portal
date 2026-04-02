@@ -531,6 +531,7 @@ body.admin-hide-scrollbar .center-content::-webkit-scrollbar {
 .news-item {
   display: flex;
   align-items: flex-start;
+  gap: 12px;
   padding-bottom: 15px;
   border-bottom: 1px solid #eee;
 }
@@ -543,12 +544,13 @@ body.admin-hide-scrollbar .center-content::-webkit-scrollbar {
 .news-icon {
   font-size: 20px;
   color: #1e5cb0;
-  margin-right: 12px;
   margin-top: 2px;
+  flex-shrink: 0;
 }
 
 .news-text {
   flex: 1;
+  min-width: 0;
 }
 
 .news-item-title {
@@ -556,6 +558,22 @@ body.admin-hide-scrollbar .center-content::-webkit-scrollbar {
   font-weight: bold;
   margin: 0 0 5px;
   color: #1e5cb0;
+}
+
+.news-item-link {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  word-break: break-all;
+}
+
+.news-item-title .news-item-link {
+  color: #1e5cb0;
+}
+
+.news-date .news-item-link,
+.news-badge .news-item-link {
+  color: inherit;
 }
 
 .news-date {
@@ -592,6 +610,7 @@ body.admin-hide-scrollbar .center-content::-webkit-scrollbar {
   border-radius: 4px;
   font-size: 11px;
   margin-left: auto;
+  flex-shrink: 0;
   height: fit-content;
 }
 
@@ -2279,6 +2298,10 @@ body.admin-hide-scrollbar .center-content::-webkit-scrollbar {
 [data-theme="dark"] .news-item-title,
 [data-theme="dark"] .section-title-text,
 [data-theme="dark"] .project-name {
+  color: #8ab4f8;
+}
+
+[data-theme="dark"] .news-item-title .news-item-link {
   color: #8ab4f8;
 }
 

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Navigate, Link } from 'react-router-dom';
 import { ADMIN_TOKEN_KEY } from './AdminLoginPage';
 import { EMOJI_SUGGESTIONS } from '../data/emojiSuggestions';
-import { backendUrl } from '../backendUrl';
+import { backendUrl, adminApiUrl } from '../backendUrl';
 import { useAdminAccess } from '../hooks/useAdminAccess';
 import { canEditNewsAndLinks } from '../utils/adminRoleAccess';
 

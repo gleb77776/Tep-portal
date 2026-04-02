@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { cards as fallbackCards, news as fallbackNews } from '../data/cards';
 import { backendUrl, publicAssetUrl } from '../backendUrl';
 import { mergeSiteSectionLinks, HOME_SECTIONS_LIMIT } from '../utils/mergeSiteSectionLinks';
+import { linkifyPlainText } from '../utils/linkifyText';
 
 const HOME_HERO_MOV = publicAssetUrl('home-hero.mov');
 
@@ -142,8 +143,8 @@ function HomePage() {
               <div key={item.id} className="news-item">
                 <div className="news-icon">{item.icon || '📄'}</div>
                 <div className="news-text">
-                  <h4 className="news-item-title">{item.title}</h4>
-                  <p className="news-date">{item.date}</p>
+                  <h4 className="news-item-title">{linkifyPlainText(item.title, 'news-item-link')}</h4>
+                  <p className="news-date">{linkifyPlainText(item.date, 'news-item-link')}</p>
                   <p className="news-social-line">
                     Подробнее — в наших соцсетях
                     <a href="https://vk.com/ao_tep" target="_blank" rel="noopener noreferrer" className="news-social-icon" title="ВКонтакте" aria-label="ВКонтакте">
@@ -154,7 +155,9 @@ function HomePage() {
                     </a>
                   </p>
                 </div>
-                {item.badge && <span className="news-badge">{item.badge}</span>}
+                {item.badge && (
+                  <span className="news-badge">{linkifyPlainText(item.badge, 'news-item-link')}</span>
+                )}
               </div>
             ))}
           </div>

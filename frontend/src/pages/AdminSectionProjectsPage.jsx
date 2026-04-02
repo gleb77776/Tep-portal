@@ -30,7 +30,6 @@ function AdminSectionProjectsPage() {
   const [selectedProjectId, setSelectedProjectId] = useState(null);
 
   const [docs, setDocs] = useState([]);
-  const [uploadFile, setUploadFile] = useState(null);
 
   const [newTitle, setNewTitle] = useState('');
   const [pendingCreates, setPendingCreates] = useState([]);
@@ -91,7 +90,6 @@ function AdminSectionProjectsPage() {
     setPendingCreates([]);
     setPendingUploads([]);
     setNewTitle('');
-    setUploadFile(null);
     setError('');
   }, [slug]);
 
@@ -114,18 +112,16 @@ function AdminSectionProjectsPage() {
     setNewTitle('');
   };
 
-  const addUploadToQueue = () => {
+  const onFileSelected = (e) => {
+    const file = e.target.files?.[0] || null;
+    if (e.target) e.target.value = '';
     setError('');
-    if (!uploadFile) {
-      setError('Выберите файл');
-      return;
-    }
+    if (!file) return;
     if (!selectedProjectId) {
-      setError('Выберите проект');
+      setError('Сначала выберите проект слева');
       return;
     }
-    setPendingUploads((prev) => [...prev, { projectId: selectedProjectId, file: uploadFile }]);
-    setUploadFile(null);
+    setPendingUploads((prev) => [...prev, { projectId: selectedProjectId, file }]);
   };
 
   const persistAll = async () => {
@@ -219,7 +215,7 @@ function AdminSectionProjectsPage() {
             className="admin-btn admin-btn-primary"
             onClick={persistAll}
             disabled={!isDirty || loading || saving}
-            title="Сохранить создание проектов и загрузку файлов из очереди"
+            title="Отправить на сервер: новые проекты и выбранные файлы"
           >
             {saving ? 'Сохранение…' : 'Сохранить'}
           </button>
@@ -227,7 +223,7 @@ function AdminSectionProjectsPage() {
       </div>
 
       <p className="admin-form-hint" style={{ marginBottom: 16 }}>
-        Создание проектов и загрузка файлов попадают в очередь. Изменения на сервере — после нажатия «Сохранить» в шапке.
+        Новый проект — «+ В очередь», затем «Сохранить». Файлы: выберите на диске — к отправке; на сервер — «Сохранить» в шапке.
         {!docUploadOnly && ' Удаление файла применяется сразу.'}
         {docUploadOnly && ' У роли «Документация» нет прав на удаление файлов.'}
       </p>
@@ -262,13 +258,16 @@ function AdminSectionProjectsPage() {
               <div className="admin-projects-queue-hint">
                 {pendingCreates.length > 0 && (
                   <p>
-                    <strong>Очередь:</strong> создать проектов — {pendingCreates.length}
+                    <strong>К сохранению:</strong> создать проектов — {pendingCreates.length}
                     {pendingCreates.length <= 3 ? ` (${pendingCreates.join(', ')})` : ''}
                   </p>
                 )}
                 {pendingUploads.length > 0 && (
                   <p>
-                    <strong>Очередь:</strong> загрузить файлов — {pendingUploads.length}
+                    <strong>К сохранению:</strong> файлов — {pendingUploads.length}
+                    {pendingUploads.length <= 5
+                      ? ` (${pendingUploads.map((u) => u.file.name).join(', ')})`
+                      : ''}
                   </p>
                 )}
               </div>
@@ -309,21 +308,16 @@ function AdminSectionProjectsPage() {
                 </p>
 
                 <div className="admin-projects-upload">
+                  <label className="admin-form-hint" style={{ display: 'block', marginBottom: 8 }}>
+                    Выберите файл — он будет добавлен к отправке; загрузка на сервер после «Сохранить» в шапке.
+                  </label>
                   <input
                     type="file"
                     className="admin-form-input"
                     accept=".pdf,.xlsx,.xls,.docx,.doc"
-                    onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
+                    onChange={onFileSelected}
                     disabled={saving}
                   />
-                  <button
-                    type="button"
-                    className="admin-btn admin-btn-primary"
-                    onClick={addUploadToQueue}
-                    disabled={saving || !uploadFile}
-                  >
-                    ⬆ В очередь на загрузку
-                  </button>
                 </div>
 
                 <div className="admin-projects-files">

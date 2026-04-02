@@ -2544,7 +2544,10 @@ body.admin-hide-scrollbar .center-content::-webkit-scrollbar {
 .admin-news-page {
   padding: 24px;
   max-width: 900px;
+  width: 100%;
   margin: 0 auto;
+  box-sizing: border-box;
+  min-width: 0;
 }
 
 /* --- Админ: главная (выбор раздела) --- */
@@ -2968,16 +2971,21 @@ body.admin-hide-scrollbar .center-content::-webkit-scrollbar {
   display: flex;
   gap: 18px;
   align-items: flex-start;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .admin-projects-sidebar {
   width: 380px;
+  max-width: 100%;
   flex-shrink: 0;
 }
 
 .admin-projects-content {
   flex: 1;
   min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 .admin-projects-create {
@@ -3004,16 +3012,65 @@ body.admin-hide-scrollbar .center-content::-webkit-scrollbar {
   align-items: center;
   margin-bottom: 16px;
   flex-wrap: wrap;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .admin-projects-upload input[type='file'] {
-  flex: 1;
-  min-width: 220px;
+  flex: 1 1 0%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.admin-projects-files {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .admin-projects-files .news-title {
   margin: 0;
   padding: 0;
+}
+
+.admin-projects-files .admin-news-list {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Длинные имена файлов — строка не шире колонки, кнопки остаются в кадре */
+.admin-projects-files .admin-news-row {
+  flex-wrap: nowrap;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+.admin-projects-files .admin-news-row-text {
+  overflow: hidden;
+}
+.admin-projects-files .admin-news-row-text strong {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.admin-projects-files .admin-news-row-date {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .admin-projects-layout {
+    flex-direction: column;
+  }
+  .admin-projects-sidebar {
+    width: 100%;
+  }
 }
 
 /* ---------- Тёмная тема: админ-панель, заглушки, лицензии, остатки просмотрщика / СМК ---------- */

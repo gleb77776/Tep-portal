@@ -329,7 +329,7 @@ function AdminSectionProjectsPage() {
                       {docs.map((d) => (
                         <div key={d.id} className="admin-news-row">
                           <div className="admin-news-row-text">
-                            <strong>{d.name}</strong>
+                            <strong title={d.name}>{d.name}</strong>
                             <span className="admin-news-row-date">
                               {d.addedBy ? `Добавил: ${d.addedBy}` : ''}{d.addedAt ? ` • ${d.addedAt}` : ''}
                             </span>

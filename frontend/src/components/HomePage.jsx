@@ -51,8 +51,8 @@ function HomePage() {
   const displayCards = useMemo(() => {
     if (siteSections && siteSections.length > 0) {
       const merged = mergeSiteSectionLinks(siteSections, sectionLinks);
-      const forHome = merged.filter((s) => s.showOnHome && s.slug !== 'all-sections');
-      forHome.sort((a, b) => (a.homeOrder ?? 0) - (b.homeOrder ?? 0));
+      const forHome = merged.filter((s) => s.slug !== 'all-sections');
+      forHome.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
       const main = forHome.slice(0, HOME_SECTIONS_LIMIT);
       const allCard = merged.find((s) => s.template === 'all_sections' || s.slug === 'all-sections');
       return allCard ? [...main, allCard] : main;

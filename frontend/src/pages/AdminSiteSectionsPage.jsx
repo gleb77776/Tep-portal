@@ -1,14 +1,17 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Navigate, Link } from 'react-router-dom';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { Navigate } from 'react-router-dom';
 import { ADMIN_TOKEN_KEY } from './AdminLoginPage';
 import { backendUrl, adminApiUrl } from '../backendUrl';
 import { parseJsonResponse } from '../utils/parseJsonResponse';
 import { EMOJI_SUGGESTIONS } from '../data/emojiSuggestions';
-import { getSectionAdminContentLink } from '../utils/sectionAdminLinks';
-
 function getAuthHeaders() {
   const token = localStorage.getItem(ADMIN_TOKEN_KEY);
   return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+/** Системная карточка «Все разделы» / главная — не показываем в реестре (на главной всегда 7-я). */
+function isAllSectionsRegistryRow(s) {
+  return s?.slug === 'all-sections' || s?.template === 'all_sections';
 }
 
 const TEMPLATES = [
@@ -38,7 +41,6 @@ function AdminSiteSectionsPage() {
     template: 'documents',
     externalUrl: '',
     linkKey: '',
-    showOnHome: false,
   });
 
   const load = useCallback(async () => {
@@ -103,46 +105,31 @@ function AdminSiteSectionsPage() {
     }
   };
 
-  const persistHomeOrder = async (ids) => {
-    setSaving(true);
-    setError('');
-    try {
-      const res = await fetch(adminApiUrl('/site-sections/reorder-home'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        body: JSON.stringify({ ids }),
-      });
-      if (!res.ok) {
-        const d = await parseJsonResponse(res).catch(() => ({}));
-        throw new Error(d.error || 'Ошибка порядка на главной');
-      }
-      await load();
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setSaving(false);
-    }
-  };
+  const visibleSections = useMemo(
+    () => sections.filter((s) => !isAllSectionsRegistryRow(s)),
+    [sections]
+  );
 
   const move = (from, to) => {
     if (from === to) return;
-    const next = [...sections];
+    const allEntry = sections.find(isAllSectionsRegistryRow);
+    const vis = sections.filter((s) => !isAllSectionsRegistryRow(s));
+    const next = [...vis];
     const [m] = next.splice(from, 1);
     next.splice(to, 0, m);
-    setSections(next);
-    persistOrder(next.map((s) => s.id));
+    const newFull = allEntry ? [...next, allEntry] : next;
+    setSections(newFull);
+    persistOrder(newFull.map((s) => s.id));
   };
 
-  const homeRows = [...sections]
-    .filter((s) => s.showOnHome && s.slug !== 'all-sections')
-    .sort((a, b) => (a.homeOrder ?? 0) - (b.homeOrder ?? 0));
+  /** Первые 6 строк реестра — карточки 1–6 на главной; «Все разделы» в списке не показывается (на сайте всегда 7-я). */
+  const homeSlotsInListOrder = visibleSections;
 
-  const moveHome = (from, to) => {
-    if (from === to) return;
-    const next = [...homeRows];
-    const [m] = next.splice(from, 1);
-    next.splice(to, 0, m);
-    persistHomeOrder(next.map((s) => s.id));
+  const homePositionLabel = (s) => {
+    const idx = homeSlotsInListOrder.findIndex((x) => x.id === s.id);
+    if (idx < 0) return null;
+    const n = idx + 1;
+    return n <= 6 ? `на главной: ${n}-я из 6 карточек` : `не в первых 6 на главной (${n}-я в списке — поднимите выше)`;
   };
 
   const createSection = async (e) => {
@@ -155,7 +142,6 @@ function AdminSiteSectionsPage() {
         icon: form.icon.trim() || '📁',
         slug: form.slug.trim().toLowerCase(),
         template: form.template,
-        showOnHome: form.showOnHome,
       };
       if (form.template === 'single_link') {
         body.externalUrl = form.externalUrl.trim();
@@ -177,32 +163,10 @@ function AdminSiteSectionsPage() {
         template: 'documents',
         externalUrl: '',
         linkKey: '',
-        showOnHome: false,
       });
       await load();
     } catch (err) {
       setError(err.message);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const toggleShowOnHome = async (s) => {
-    setSaving(true);
-    setError('');
-    try {
-      const res = await fetch(adminApiUrl(`/site-sections/${encodeURIComponent(s.id)}`), {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        body: JSON.stringify({ showOnHome: !s.showOnHome }),
-      });
-      if (!res.ok) {
-        const d = await res.json().catch(() => ({}));
-        throw new Error(d.error || 'Ошибка');
-      }
-      await load();
-    } catch (e) {
-      setError(e.message);
     } finally {
       setSaving(false);
     }
@@ -234,13 +198,10 @@ function AdminSiteSectionsPage() {
 
   return (
     <div className="admin-home-page">
-      <Link to="/admin/sections" className="admin-sections-back">
-        ← К редактированию контента разделов
-      </Link>
       <h1 className="admin-home-title">Разделы сайта (реестр)</h1>
       <p className="admin-sections-intro" style={{ maxWidth: 720 }}>
-        Порядок строк задаёт отображение в «Все разделы». Новые разделы по шаблонам работают без перезапуска сервера. Порядок
-        карточек на главной настраивается отдельно (первые {6} с флагом «на главной»).
+        Порядок строк задаёт страницу «Все разделы» и главную. Первые {6} строк — карточки 1–6 на главной. Карточка «Все разделы»
+        на главной всегда седьмая и в этом списке не отображается.
       </p>
 
       {error && <p className="admin-news-error">{error}</p>}
@@ -356,60 +317,18 @@ function AdminSiteSectionsPage() {
               </label>
             </>
           )}
-          <label className="admin-form-label" style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <input
-              type="checkbox"
-              checked={form.showOnHome}
-              onChange={(e) => setForm((f) => ({ ...f, showOnHome: e.target.checked }))}
-            />
-            Показывать на главной
-          </label>
           <button type="submit" className="admin-btn admin-btn-primary" disabled={saving}>
             Создать
           </button>
         </form>
       )}
 
-      {!loading && homeRows.length > 0 && (
-        <div style={{ marginBottom: 24 }}>
-          <h2 className="admin-news-title" style={{ fontSize: '1.1rem' }}>
-            Порядок на главной (первые {6} с флагом «на главной»)
-          </h2>
-          <div className="admin-news-list">
-            {homeRows.map((s, index) => (
-              <div key={`home-${s.id}`} className="admin-news-row">
-                <span
-                  className="admin-news-row-drag"
-                  draggable
-                  onDragStart={(e) => e.dataTransfer.setData('text/plain', String(index))}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    const from = Number(e.dataTransfer.getData('text/plain'));
-                    if (Number.isFinite(from)) moveHome(from, index);
-                  }}
-                  title="Порядок на главной"
-                >
-                  ⠿
-                </span>
-                <div className="admin-news-row-text">
-                  <strong>
-                    {s.icon} {s.title}
-                  </strong>
-                  <span className="admin-news-row-date">homeOrder: {s.homeOrder}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {loading ? (
         <p>Загрузка…</p>
       ) : (
         <div className="admin-news-list">
-          {sections.map((s, index) => {
-            const contentLink = getSectionAdminContentLink(s);
+          {visibleSections.map((s, index) => {
+            const homeHint = homePositionLabel(s);
             return (
             <div key={s.id} className="admin-news-row">
               <span
@@ -422,7 +341,7 @@ function AdminSiteSectionsPage() {
                   const from = Number(e.dataTransfer.getData('text/plain'));
                   if (Number.isFinite(from)) move(from, index);
                 }}
-                title="Перетащить"
+                title="Порядок в списке и на главной (первые 6 строк — карточки на главной)"
               >
                 ⠿
               </span>
@@ -432,29 +351,16 @@ function AdminSiteSectionsPage() {
                 </strong>
                 <span className="admin-news-row-date">
                   {s.template} · {s.cardHref || s.internalPath || '—'} {s.system ? '· системный' : ''}
+                  {homeHint ? ` · ${homeHint}` : ''}
                 </span>
               </div>
-              <div className="admin-news-row-btns">
-                <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, marginRight: 8 }}>
-                  <input
-                    type="checkbox"
-                    checked={!!s.showOnHome}
-                    onChange={() => toggleShowOnHome(s)}
-                    disabled={saving}
-                  />
-                  На главной
-                </label>
-                {contentLink && (
-                  <Link to={contentLink} className="admin-btn admin-btn-small" style={{ textDecoration: 'none' }}>
-                    Контент
-                  </Link>
-                )}
-                {!s.system && (
+              {!s.system && (
+                <div className="admin-news-row-btns">
                   <button type="button" className="admin-btn admin-btn-small admin-btn-danger" onClick={() => deleteSection(s)}>
                     Удалить
                   </button>
-                )}
-              </div>
+                </div>
+              )}
             </div>
             );
           })}
@@ -462,8 +368,8 @@ function AdminSiteSectionsPage() {
       )}
 
       <p className="admin-form-hint" style={{ marginTop: 24 }}>
-        Чтобы раздел попал в блок «Порядок на главной», включите при создании «Показывать на главной» или задайте в JSON{' '}
-        <code>showOnHome: true</code>. На главной отображаются первые {6} таких разделов (плюс карточка «Все разделы»).
+        Чем выше строка, тем раньше раздел в меню «Все разделы» и тем выше шанс попасть в первые {6} карточек на главной. Седьмая
+        карточка на главной («Все разделы») фиксирована и не входит в этот список.
       </p>
     </div>
   );

@@ -1,7 +1,4 @@
-/**
- * Ссылка в админке на редактирование контента раздела из реестра site-sections.
- * Совпадает с кнопкой «Контент» на странице /admin/site-sections.
- */
+/** Ссылка в админке на редактирование контента раздела (страница «Разделы» /admin/sections). */
 export function getSectionAdminContentLink(s) {
   if (!s) return null;
   if (s.template === 'projects') {

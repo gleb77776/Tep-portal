@@ -296,6 +296,12 @@ function AdminSiteSectionsPage() {
               required
             />
           </label>
+          {form.template === 'projects' && (
+            <p className="admin-form-hint" style={{ marginBottom: 12, lineHeight: 1.45 }}>
+              После создания раздела список проектов и файлов настраивается в контенте раздела. На странице
+              каждого проекта пользователи смогут искать файлы по названию.
+            </p>
+          )}
           {form.template === 'single_link' && (
             <>
               <label className="admin-form-label">

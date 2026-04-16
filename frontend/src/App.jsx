@@ -41,6 +41,10 @@ import SurveyTakePage from './pages/SurveyTakePage';
 import AdminProtectedLayout from './components/AdminProtectedLayout';
 import { AdminAccessContext } from './context/AdminAccessContext';
 import { parseJsonResponse } from './utils/parseJsonResponse';
+import {
+  GUEST_USER_PLACEHOLDER,
+  isGuestProjectRoute,
+} from './utils/guestProjectAccess';
 import { adminApiUrl } from './backendUrl';
 import { adminPanelAllowed } from './utils/adminRoleAccess';
 
@@ -108,6 +112,17 @@ function App() {
         const res = await fetch(meUrl, { credentials: 'include' });
 
         if (res.status === 401) {
+          if (isGuestProjectRoute(location.pathname)) {
+            setNeedsAdLogin(false);
+            setUserData({ ...GUEST_USER_PLACEHOLDER });
+            setLoginError('');
+            const initials = 'Г';
+            const svg = `<svg width="80" height="80" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg"><rect width="80" height="80" rx="40" fill="#4aa8d8"/><text x="50%" y="50%" text-anchor="middle" dy="0.3em" font-family="Arial, sans-serif" font-size="32" font-weight="bold" fill="white">${initials}</text></svg>`;
+            const svgUrl = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }));
+            blobUrlToRevoke = svgUrl;
+            setPhotoUrl(svgUrl);
+            return;
+          }
           setNeedsAdLogin(true);
           const fallbackUser = {
             fullName: 'Пользователь',
@@ -151,7 +166,12 @@ function App() {
           setPhotoUrl(svgUrl);
         }
       } catch (err) {
-        setNeedsAdLogin(true);
+        if (isGuestProjectRoute(location.pathname)) {
+          setNeedsAdLogin(false);
+          setUserData({ ...GUEST_USER_PLACEHOLDER });
+        } else {
+          setNeedsAdLogin(true);
+        }
       }
     };
 
@@ -159,7 +179,7 @@ function App() {
     return () => {
       if (blobUrlToRevoke) URL.revokeObjectURL(blobUrlToRevoke);
     };
-  }, []);
+  }, [location.pathname]);
 
   const handleAdLogin = async (e) => {
     e?.preventDefault?.();

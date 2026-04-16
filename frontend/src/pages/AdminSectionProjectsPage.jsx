@@ -7,6 +7,7 @@ import {
   isDocumentationUploadOnly,
   DOCUMENTATION_SCOPED_PROJECTS_SLUG,
 } from '../hooks/useAdminAccess';
+import { filterProjectDocuments } from '../utils/projectDocumentsFilter';
 
 function getAuthHeaders() {
   const token = localStorage.getItem(ADMIN_TOKEN_KEY);
@@ -30,6 +31,7 @@ function AdminSectionProjectsPage() {
   const [selectedProjectId, setSelectedProjectId] = useState(null);
 
   const [docs, setDocs] = useState([]);
+  const [docSearch, setDocSearch] = useState('');
 
   const [newTitle, setNewTitle] = useState('');
   const [pendingCreates, setPendingCreates] = useState([]);
@@ -100,6 +102,15 @@ function AdminSectionProjectsPage() {
   useEffect(() => {
     if (isAuthed) fetchDocs();
   }, [fetchDocs]);
+
+  useEffect(() => {
+    setDocSearch('');
+  }, [selectedProjectId]);
+
+  const filteredAdminDocs = useMemo(
+    () => filterProjectDocuments(docs, { searchQuery: docSearch }),
+    [docs, docSearch]
+  );
 
   const addProjectToQueue = () => {
     setError('');
@@ -307,6 +318,22 @@ function AdminSectionProjectsPage() {
                   {selectedProject.author ? `Добавил: ${selectedProject.author}` : ''}
                 </p>
 
+                <div className="admin-projects-doc-search" style={{ marginBottom: 16 }}>
+                  <label className="admin-form-label" style={{ display: 'block', marginBottom: 6 }}>
+                    Поиск по названию
+                  </label>
+                  <input
+                    type="search"
+                    className="admin-form-input"
+                    placeholder="Фрагмент названия или имени файла…"
+                    value={docSearch}
+                    onChange={(e) => setDocSearch(e.target.value)}
+                    autoComplete="off"
+                    disabled={saving}
+                    style={{ maxWidth: 480 }}
+                  />
+                </div>
+
                 <div className="admin-projects-upload">
                   <label className="admin-form-hint" style={{ display: 'block', marginBottom: 8 }}>
                     Выберите файл — он будет добавлен к отправке; загрузка на сервер после «Сохранить» в шапке.
@@ -324,9 +351,11 @@ function AdminSectionProjectsPage() {
                   <h3 className="news-title" style={{ marginBottom: 12 }}>Файлы в проекте</h3>
                   {docs.length === 0 ? (
                     <p className="admin-news-empty">Пока нет загруженных файлов</p>
+                  ) : filteredAdminDocs.length === 0 ? (
+                    <p className="admin-news-empty">Ничего не найдено по поиску или фильтру</p>
                   ) : (
                     <div className="admin-news-list">
-                      {docs.map((d) => (
+                      {filteredAdminDocs.map((d) => (
                         <div key={d.id} className="admin-news-row">
                           <div className="admin-news-row-text">
                             <strong title={d.name}>{d.name}</strong>

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { backendUrl } from '../backendUrl';
+import { filterProjectDocuments } from '../utils/projectDocumentsFilter';
 
 /** Карточка проекта внутри раздела /s/:slug (отдельно от /projects/:id). */
 function SectionProjectPage({ onOpenDocument }) {
@@ -11,6 +12,7 @@ function SectionProjectPage({ onOpenDocument }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [filterType, setFilterType] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -59,10 +61,14 @@ function SectionProjectPage({ onOpenDocument }) {
     return [...s];
   }, [documents]);
 
-  const filteredDocs = useMemo(() => {
-    if (!filterType) return documents;
-    return documents.filter((d) => (d?.ext || '') === filterType);
-  }, [documents, filterType]);
+  const filteredDocs = useMemo(
+    () =>
+      filterProjectDocuments(documents, {
+        typeFilter: filterType,
+        searchQuery,
+      }),
+    [documents, filterType, searchQuery]
+  );
 
   // Как в ProjectPage.jsx (+ расширения для scoped-загрузок)
   const iconForExt = (ext) => {
@@ -92,15 +98,32 @@ function SectionProjectPage({ onOpenDocument }) {
 
       <div className="project-layout">
         <div className="project-documents">
-          <div className="documents-filters">
-            <select value={filterType} onChange={(e) => setFilterType(e.target.value)} className="filter-select">
-              <option value="">Все типы</option>
-              {docTypes.map((t) => (
-                <option key={t} value={t}>
-                  {String(t).toUpperCase()}
-                </option>
-              ))}
-            </select>
+          <div className="documents-filters documents-filters--stack">
+            <label className="documents-search-label">
+              <span className="documents-search-label-text">Поиск по названию</span>
+              <input
+                type="search"
+                className="documents-search-input"
+                placeholder="Название или фрагмент имени файла…"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                autoComplete="off"
+              />
+            </label>
+            <div className="documents-filters-row">
+              <select
+                value={filterType}
+                onChange={(e) => setFilterType(e.target.value)}
+                className="filter-select"
+              >
+                <option value="">Все типы</option>
+                {docTypes.map((t) => (
+                  <option key={t} value={t}>
+                    {String(t).toUpperCase()}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {loading ? (
@@ -114,7 +137,7 @@ function SectionProjectPage({ onOpenDocument }) {
           ) : (
             <div className="documents-list">
               {filteredDocs.length === 0 ? (
-                <p className="no-documents">Ничего не найдено по фильтру</p>
+                <p className="no-documents">Ничего не найдено по поиску или фильтру</p>
               ) : (
                 filteredDocs.map((doc) => (
                   <div

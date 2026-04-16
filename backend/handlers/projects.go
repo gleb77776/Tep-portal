@@ -297,6 +297,34 @@ func projectVisible(p AdminProject) bool {
 	return p.Visible
 }
 
+// loadDiagramTitleMap читает data/diagrams/<project>/diagram_titles.json и опционально
+// diagram_titles.local.json (ручные дополнения; ключи из local перекрывают основной файл).
+func loadDiagramTitleMap(projectDir string) map[string]string {
+	merge := func(name string, into map[string]string) {
+		p := filepath.Join(projectDir, name)
+		data, err := os.ReadFile(p)
+		if err != nil {
+			return
+		}
+		var patch map[string]string
+		if err := json.Unmarshal(data, &patch); err != nil {
+			return
+		}
+		for k, v := range patch {
+			if strings.TrimSpace(v) != "" {
+				into[k] = strings.TrimSpace(v)
+			}
+		}
+	}
+	out := make(map[string]string)
+	merge("diagram_titles.json", out)
+	merge("diagram_titles.local.json", out)
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
+
 func validateProjectTitle(title string) error {
 	if strings.TrimSpace(title) == "" {
 		return errors.New("title required")
@@ -707,16 +735,26 @@ func ListProjectDocuments(c *gin.Context) {
 	basePath := getDiagramsPathForProjects()
 	projectDir := filepath.Join(basePath, projectID)
 	if _, err := os.Stat(projectDir); err == nil {
+		titleByFile := loadDiagramTitleMap(projectDir)
 		files, _ := os.ReadDir(projectDir)
 		for idx, f := range files {
 			if f.IsDir() {
 				continue
 			}
 			name := f.Name()
+			if name == "diagram_titles.json" {
+				continue
+			}
+			displayName := name
+			if titleByFile != nil {
+				if t, ok := titleByFile[name]; ok && strings.TrimSpace(t) != "" {
+					displayName = strings.TrimSpace(t)
+				}
+			}
 			ext := strings.ToLower(strings.TrimPrefix(filepath.Ext(name), "."))
 			diagramsDocs = append(diagramsDocs, ProjectDocument{
 				ID:      fmt.Sprintf("diag-%d", idx),
-				Name:    name,
+				Name:    displayName,
 				Ext:     ext,
 				Url:     fmt.Sprintf("/diagrams/%s/%s", projectID, urlPathEscape(name)),
 				AddedBy: "PDMS",

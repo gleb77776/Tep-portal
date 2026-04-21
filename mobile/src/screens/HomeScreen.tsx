@@ -19,7 +19,6 @@ import { API_BASE_URL } from '../config';
 import { getStoredFullNameOverride, hasIdentityAck } from '../utils/identityAckStorage';
 import { useTheme } from '../context/ThemeContext';
 import type { RootStackParamList } from '../navigation/types';
-import type { ThemeColors } from '../theme/colors';
 
 const USERNAME_KEY = 'ad_username';
 const SNAPSHOT_KEY = 'portal_user_snapshot';
@@ -99,7 +98,7 @@ export default function HomeScreen({ navigation }: Props) {
     return (
       <View style={[styles.centered, { backgroundColor: colors.screenBg }]}>
         <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={[styles.muted, { color: colors.textMuted }]}>Загрузка профиля…</Text>
+        <Text style={[styles.muted, { color: colors.textMuted }]}>Загрузка…</Text>
       </View>
     );
   }
@@ -117,15 +116,12 @@ export default function HomeScreen({ navigation }: Props) {
         />
       }
     >
-      <LogoHeader compact fullBleed subtitle="Корпоративный портал" />
+      <LogoHeader compact fullBleed />
       <View style={styles.sectionsStrip}>
         <TouchableOpacity
           style={[
             styles.sectionCard,
-            {
-              backgroundColor: colors.mode === 'dark' ? '#1a3a66' : colors.primary,
-              borderColor: 'rgba(255,255,255,0.12)',
-            },
+            { backgroundColor: colors.logoStripStart },
           ]}
           onPress={openOhs}
           activeOpacity={0.85}
@@ -142,20 +138,6 @@ export default function HomeScreen({ navigation }: Props) {
         </TouchableOpacity>
       </View>
       <View style={styles.body}>
-        <View
-          style={[
-            styles.card,
-            {
-              backgroundColor: colors.cardBg,
-              borderColor: colors.cardBorder,
-            },
-          ]}
-        >
-          <Row label="Логин" value={user?.username ?? '—'} colors={colors} />
-          <Row label="ФИО" value={user?.fullName ?? '—'} colors={colors} />
-          <Row label="Подразделение" value={user?.department ?? '—'} colors={colors} />
-          <Row label="Почта" value={user?.email ?? '—'} colors={colors} />
-        </View>
         <TouchableOpacity
           style={[styles.outlineBtn, { borderColor: colors.danger }]}
           onPress={onLogout}
@@ -167,23 +149,6 @@ export default function HomeScreen({ navigation }: Props) {
   );
 }
 
-function Row({
-  label,
-  value,
-  colors,
-}: {
-  label: string;
-  value: string;
-  colors: ThemeColors;
-}) {
-  return (
-    <View style={styles.row}>
-      <Text style={[styles.label, { color: colors.textMuted }]}>{label}</Text>
-      <Text style={[styles.value, { color: colors.textSecondary }]}>{value}</Text>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   muted: { marginTop: 12 },
@@ -192,23 +157,23 @@ const styles = StyleSheet.create({
   body: { paddingHorizontal: 16 },
   sectionsStrip: {
     width: '100%',
+    marginTop: 44,
     paddingHorizontal: 16,
-    paddingTop: 4,
     paddingBottom: 12,
   },
   sectionCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    paddingVertical: 14,
+    paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 12,
-    borderWidth: 1,
+    borderWidth: 0,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.18,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    elevation: 3,
   },
   sectionIconCircle: {
     width: 40,
@@ -225,15 +190,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 18,
   },
-  card: {
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 2,
-    marginBottom: 16,
-  },
-  row: { marginBottom: 12 },
-  label: { fontSize: 12, marginBottom: 4 },
-  value: { fontSize: 16 },
   outlineBtn: {
     borderWidth: 1,
     borderRadius: 10,

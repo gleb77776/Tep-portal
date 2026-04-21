@@ -15,6 +15,8 @@ import { useTheme } from '../context/ThemeContext';
 type Props = {
   subtitle?: string;
   compact?: boolean;
+  /** Полоса лого без горизонтальных отступов — на всю ширину экрана (главная). */
+  fullBleed?: boolean;
 };
 
 /** Как в App.css .logo-acronym — линейный градиент и «перелив» background-position */
@@ -61,9 +63,13 @@ function LogoTextStatic({ compact }: MaskProps) {
   );
 }
 
-function AnimatedLogoShimmer({ compact, trackWidth }: MaskProps & { trackWidth: number }) {
+function AnimatedLogoShimmer({
+  compact,
+  trackWidth,
+  fullBleed,
+}: MaskProps & { trackWidth: number; fullBleed?: boolean }) {
   const anim = useRef(new Animated.Value(0)).current;
-  const w = Math.max(trackWidth, 260);
+  const w = fullBleed ? Math.max(trackWidth, 1) : Math.max(trackWidth, 260);
   const gradientW = w * 2.4;
   const slideRange = Math.max(gradientW - w, 80);
 
@@ -125,7 +131,7 @@ function AnimatedLogoShimmer({ compact, trackWidth }: MaskProps & { trackWidth: 
   );
 }
 
-export default function LogoHeader({ subtitle, compact }: Props) {
+export default function LogoHeader({ subtitle, compact, fullBleed }: Props) {
   const { colors } = useTheme();
   const [trackW, setTrackW] = useState(() => Dimensions.get('window').width);
   const useShimmer = Platform.OS !== 'web';
@@ -133,19 +139,32 @@ export default function LogoHeader({ subtitle, compact }: Props) {
   return (
     <View style={styles.wrap}>
       <View
-        style={[styles.strip, compact && styles.stripCompact, { backgroundColor: colors.logoStripStart }]}
+        style={[
+          styles.strip,
+          compact && styles.stripCompact,
+          fullBleed && styles.stripFullBleed,
+          { backgroundColor: colors.logoStripStart },
+        ]}
         onLayout={(e) => setTrackW(e.nativeEvent.layout.width)}
       >
         <View style={styles.stripInner}>
           {useShimmer ? (
-            <AnimatedLogoShimmer compact={compact} trackWidth={trackW} />
+            <AnimatedLogoShimmer compact={compact} trackWidth={trackW} fullBleed={fullBleed} />
           ) : (
             <LogoTextStatic compact={compact} />
           )}
         </View>
       </View>
       {subtitle ? (
-        <Text style={[styles.subtitle, { color: colors.textMuted }]}>{subtitle}</Text>
+        <Text
+          style={[
+            styles.subtitle,
+            fullBleed && styles.subtitleBleed,
+            { color: colors.textMuted },
+          ]}
+        >
+          {subtitle}
+        </Text>
       ) : null}
     </View>
   );
@@ -158,6 +177,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  stripFullBleed: {
+    paddingHorizontal: 0,
   },
   stripCompact: { paddingVertical: 10 },
   stripInner: {
@@ -256,5 +278,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 12,
     paddingHorizontal: 20,
+  },
+  subtitleBleed: {
+    paddingHorizontal: 16,
   },
 });

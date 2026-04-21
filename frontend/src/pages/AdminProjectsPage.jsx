@@ -4,6 +4,7 @@ import { ADMIN_TOKEN_KEY } from './AdminLoginPage';
 import { adminApiUrl } from '../backendUrl';
 import { useAdminAccess, isDocumentationUploadOnly } from '../hooks/useAdminAccess';
 import { filterProjectDocuments } from '../utils/projectDocumentsFilter';
+import { moveItem } from '../utils/reorderArray';
 
 function getAuthHeaders() {
   const token = localStorage.getItem(ADMIN_TOKEN_KEY);
@@ -27,17 +28,32 @@ function AdminProjectsPage() {
   const [pendingCreates, setPendingCreates] = useState([]);
   const [pendingUploads, setPendingUploads] = useState([]);
 
+  const [folderLink, setFolderLink] = useState('');
+  const [diagramsEnabled, setDiagramsEnabled] = useState(true);
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   const [error, setError] = useState('');
 
-  const isDirty = pendingCreates.length > 0 || pendingUploads.length > 0;
+  const selectedProject = projects.find((p) => p.id === selectedProjectId) || null;
 
-  const fetchProjects = useCallback(async () => {
+  const settingsDirty = useMemo(() => {
+    if (!selectedProject) return false;
+    const sameFolder = folderLink.trim() === String(selectedProject.folderLink || '').trim();
+    const serverDiag = selectedProject.diagramsEnabled !== false;
+    const sameDiag = diagramsEnabled === serverDiag;
+    return !sameFolder || !sameDiag;
+  }, [selectedProject, folderLink, diagramsEnabled]);
+
+  const isDirty =
+    pendingCreates.length > 0 || pendingUploads.length > 0 || settingsDirty;
+
+  const fetchProjects = useCallback(async (opts = {}) => {
+    const silent = opts.silent === true;
     if (!isAuthed) return;
     setError('');
-    setLoading(true);
+    if (!silent) setLoading(true);
     try {
       const res = await fetch(adminApiUrl('/projects'), { headers: authHeaders });
       const data = await res.json().catch(() => ({}));
@@ -47,19 +63,20 @@ function AdminProjectsPage() {
       setProjects(list);
 
       // Выбираем первый видимый проект (или первый вообще)
-      if (!selectedProjectId) {
+      setSelectedProjectId((current) => {
+        if (current) return current;
         const first = list.find((p) => p.visible) || list[0] || null;
-        setSelectedProjectId(first ? first.id : null);
-      }
+        return first ? first.id : null;
+      });
     } catch (e) {
       setError(e.message || 'Ошибка');
       setProjects([]);
       setSelectedProjectId(null);
       setDocs([]);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
-  }, [authHeaders, selectedProjectId]);
+  }, [authHeaders]);
 
   const fetchDocs = useCallback(async () => {
     if (!isAuthed || !selectedProjectId) return;
@@ -87,6 +104,16 @@ function AdminProjectsPage() {
   useEffect(() => {
     setDocSearch('');
   }, [selectedProjectId]);
+
+  useEffect(() => {
+    if (selectedProject) {
+      setFolderLink(selectedProject.folderLink || '');
+      setDiagramsEnabled(selectedProject.diagramsEnabled !== false);
+    } else {
+      setFolderLink('');
+      setDiagramsEnabled(true);
+    }
+  }, [selectedProject]);
 
   const filteredAdminDocs = useMemo(
     () => filterProjectDocuments(docs, { searchQuery: docSearch }),
@@ -119,37 +146,82 @@ function AdminProjectsPage() {
 
   const persistAll = async () => {
     if (!isDirty) return;
+    const needDocsRefresh = pendingUploads.length > 0;
+    const settingsNeedSave = Boolean(selectedProjectId && settingsDirty);
     setError('');
     setSaving(true);
     try {
-      for (const title of pendingCreates) {
-        const res = await fetch(adminApiUrl('/projects'), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...authHeaders },
-          body: JSON.stringify({ title }),
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error || 'Ошибка создания проекта');
+      if (pendingCreates.length > 0) {
+        const createdItems = await Promise.all(
+          pendingCreates.map(async (title) => {
+            const res = await fetch(adminApiUrl('/projects'), {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', ...authHeaders },
+              body: JSON.stringify({ title }),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.error || 'Ошибка создания проекта');
+            return data;
+          })
+        );
+        setPendingCreates([]);
+        setProjects((prev) => [...prev, ...createdItems]);
       }
-      setPendingCreates([]);
-      await fetchProjects();
 
-      for (const { projectId, file } of pendingUploads) {
-        const form = new FormData();
-        form.append('file', file);
-        const res = await fetch(adminApiUrl(`/projects/${projectId}/files`), {
-          method: 'POST',
-          headers: { ...authHeaders },
-          body: form,
+      if (pendingUploads.length > 0) {
+        await Promise.all(
+          pendingUploads.map(async ({ projectId, file }) => {
+            const form = new FormData();
+            form.append('file', file);
+            const res = await fetch(adminApiUrl(`/projects/${projectId}/files`), {
+              method: 'POST',
+              headers: { ...authHeaders },
+              body: form,
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.error || 'Ошибка загрузки файла');
+          })
+        );
+        setPendingUploads([]);
+      }
+
+      if (settingsNeedSave) {
+        const res = await fetch(adminApiUrl(`/projects/${selectedProjectId}/settings`), {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', ...authHeaders },
+          body: JSON.stringify({
+            folderLink: folderLink.trim(),
+            diagramsEnabled,
+          }),
         });
         const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error || 'Ошибка загрузки файла');
+        if (!res.ok) throw new Error(data.error || 'Ошибка сохранения настроек');
       }
-      setPendingUploads([]);
-      await fetchDocs();
-      await fetchProjects();
+
+      if (needDocsRefresh) await fetchDocs();
+      await fetchProjects({ silent: true });
     } catch (e) {
       setError(e.message || 'Ошибка');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const persistProjectOrder = async (nextList) => {
+    setError('');
+    setSaving(true);
+    try {
+      const res = await fetch(adminApiUrl('/projects/reorder'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
+        body: JSON.stringify({ ids: nextList.map((p) => p.id) }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Не удалось сохранить порядок');
+      await fetchProjects({ silent: true });
+    } catch (e) {
+      setError(e.message || 'Ошибка');
+      await fetchProjects({ silent: true });
     } finally {
       setSaving(false);
     }
@@ -166,7 +238,7 @@ function AdminProjectsPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'Ошибка изменения видимости');
-      await fetchProjects();
+      await fetchProjects({ silent: true });
     } catch (e) {
       setError(e.message || 'Ошибка');
     } finally {
@@ -192,8 +264,6 @@ function AdminProjectsPage() {
     }
   };
 
-  const selectedProject = projects.find((p) => p.id === selectedProjectId) || null;
-
   if (!isAuthed) {
     return <Navigate to="/admin/login" replace />;
   }
@@ -214,7 +284,7 @@ function AdminProjectsPage() {
             className="admin-btn admin-btn-primary"
             onClick={persistAll}
             disabled={!isDirty || loading || saving}
-            title="Отправить на сервер: новые проекты и выбранные файлы"
+            title="Отправить на сервер: новые проекты, файлы и настройки папки / диаграмм"
           >
             {saving ? 'Сохранение…' : 'Сохранить'}
           </button>
@@ -222,7 +292,7 @@ function AdminProjectsPage() {
       </div>
 
       <p className="admin-form-hint" style={{ marginBottom: 16 }}>
-        Новый проект — кнопка «+ В очередь», затем «Сохранить». Файлы: выберите на диске — они попадут к отправке; на сервер — кнопка «Сохранить» в шапке.
+        Порядок в списке слева (перетаскивание за ⠿) сохраняется на сайте сразу. Новый проект — «+ В очередь», затем «Сохранить». Файлы и настройки папки / диаграмм — «Сохранить» в шапке.
         {!docUploadOnly && ' Показать/скрыть проект и удаление файла применяются сразу.'}
         {docUploadOnly && ' У роли «Документация» нет прав на скрытие проектов и удаление файлов.'}
       </p>
@@ -253,7 +323,7 @@ function AdminProjectsPage() {
               </button>
             </div>
 
-            {(pendingCreates.length > 0 || pendingUploads.length > 0) && (
+            {(pendingCreates.length > 0 || pendingUploads.length > 0 || settingsDirty) && (
               <div className="admin-projects-queue-hint">
                 {pendingCreates.length > 0 && (
                   <p>
@@ -269,6 +339,11 @@ function AdminProjectsPage() {
                       : ''}
                   </p>
                 )}
+                {settingsDirty && (
+                  <p>
+                    <strong>К сохранению:</strong> настройки проекта (папка / диаграммы)
+                  </p>
+                )}
               </div>
             )}
 
@@ -276,14 +351,39 @@ function AdminProjectsPage() {
               {projects.length === 0 ? (
                 <p className="admin-news-empty">Проекты не найдены</p>
               ) : (
-                projects.map((p) => (
+                projects.map((p, idx) => (
                   <div
                     key={p.id}
                     className={`admin-news-row ${selectedProjectId === p.id ? 'admin-projects-row-active' : ''}`}
                     onClick={() => setSelectedProjectId(p.id)}
                     role="button"
                     tabIndex={0}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = 'move';
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const from = parseInt(e.dataTransfer.getData('text/plain'), 10);
+                      if (Number.isNaN(from) || from === idx) return;
+                      const next = moveItem(projects, from, idx);
+                      setProjects(next);
+                      void persistProjectOrder(next);
+                    }}
                   >
+                    <span
+                      className="admin-news-row-drag"
+                      draggable={!saving}
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData('text/plain', String(idx));
+                        e.dataTransfer.effectAllowed = 'move';
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                      title="Перетащите, чтобы изменить порядок на сайте"
+                      aria-label="Изменить порядок"
+                    >
+                      ⠿
+                    </span>
                     <div className="admin-news-row-text">
                       <strong>{p.title}</strong>
                       <span className="admin-news-row-date">
@@ -323,6 +423,33 @@ function AdminProjectsPage() {
                 <p className="admin-news-loading" style={{ marginTop: -8, marginBottom: 16 }}>
                   {selectedProject.author ? `Добавил: ${selectedProject.author}` : (selectedProject.source === 'diagrams' ? 'PDMS' : '')}
                 </p>
+
+                <div className="admin-projects-settings">
+                  <h3 className="admin-projects-settings__title news-title">
+                    Ссылка на папку и диаграммы
+                  </h3>
+                  <label className="admin-projects-settings__label admin-form-label">
+                    Папка проекта в файловой системе / сети
+                  </label>
+                  <input
+                    type="text"
+                    className="admin-form-input admin-projects-settings__input"
+                    value={folderLink}
+                    onChange={(e) => setFolderLink(e.target.value)}
+                    placeholder="Необязательно"
+                    disabled={saving}
+                    autoComplete="off"
+                  />
+                  <label className="admin-projects-settings__checkbox-label admin-form-label">
+                    <input
+                      type="checkbox"
+                      checked={diagramsEnabled}
+                      onChange={(e) => setDiagramsEnabled(e.target.checked)}
+                      disabled={saving}
+                    />
+                    Показывать на сайте раздел «Диаграммы» (PDMS)
+                  </label>
+                </div>
 
                 <div className="admin-projects-doc-search" style={{ marginBottom: 16 }}>
                   <label className="admin-form-label" style={{ display: 'block', marginBottom: 6 }}>

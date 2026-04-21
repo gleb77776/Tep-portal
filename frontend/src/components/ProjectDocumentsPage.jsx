@@ -1,39 +1,86 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { backendUrl } from '../backendUrl';
 import { filterProjectDocuments } from '../utils/projectDocumentsFilter';
+import { showProjectDiagramsNav, showProjectFilesNav } from '../utils/projectNav';
 
-/** Карточка проекта внутри раздела /s/:slug (отдельно от /projects/:id). */
-function SectionProjectPage({ onOpenDocument }) {
-  const { slug, projectId } = useParams();
+/**
+ * @param {'admin' | 'diagrams'} scope
+ * @param {'global' | 'scoped'} variant
+ */
+function ProjectDocumentsPage({ onOpenDocument, scope, variant }) {
+  const { projectId, slug } = useParams();
+  const navigate = useNavigate();
+  const isScoped = variant === 'scoped';
 
   const [projectTitle, setProjectTitle] = useState(projectId);
+  const [projectMeta, setProjectMeta] = useState(null);
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [filterType, setFilterType] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
+  const redirectGuard = useRef(false);
+
+  useEffect(() => {
+    redirectGuard.current = false;
+  }, [projectId, slug, scope]);
+
   useEffect(() => {
     let cancelled = false;
-    fetch(backendUrl(`/api/v1/site-sections/scoped/${encodeURIComponent(slug)}/projects`))
-      .then((res) => res.json().catch(() => []))
-      .then((data) => {
-        if (cancelled) return;
-        const p = Array.isArray(data) ? data.find((x) => x.id === projectId) : null;
-        if (p?.title) setProjectTitle(p.title);
+    const metaUrl = isScoped
+      ? `/api/v1/site-sections/scoped/${encodeURIComponent(slug)}/projects/${encodeURIComponent(projectId)}`
+      : `/api/v1/projects/${encodeURIComponent(projectId)}`;
+    fetch(backendUrl(metaUrl))
+      .then(async (res) => {
+        if (res.status === 404) return null;
+        if (!res.ok) return null;
+        return res.json().catch(() => null);
       })
-      .catch(() => {});
+      .then((p) => {
+        if (cancelled) return;
+        if (p?.title) setProjectTitle(p.title);
+        setProjectMeta(p || null);
+      })
+      .catch(() => {
+        if (!cancelled) setProjectMeta(null);
+      });
     return () => {
       cancelled = true;
     };
-  }, [slug, projectId]);
+  }, [projectId, slug, isScoped]);
+
+  const filesPath = isScoped ? `/s/${slug}/project/${projectId}/files` : `/projects/${projectId}/files`;
+  const diagramsPath = isScoped ? `/s/${slug}/project/${projectId}/diagrams` : `/projects/${projectId}/diagrams`;
+  const backTo = isScoped ? `/s/${slug}` : '/projects';
+
+  useEffect(() => {
+    if (!projectMeta) return;
+    if (redirectGuard.current) return;
+    const filesOk = showProjectFilesNav(projectMeta);
+    const diagOk = showProjectDiagramsNav(projectMeta, { scoped: isScoped });
+    if (scope === 'admin' && !filesOk) {
+      redirectGuard.current = true;
+      if (diagOk) navigate(diagramsPath, { replace: true });
+      else navigate(backTo, { replace: true });
+      return;
+    }
+    if (scope === 'diagrams' && !diagOk) {
+      redirectGuard.current = true;
+      if (filesOk) navigate(filesPath, { replace: true });
+      else navigate(backTo, { replace: true });
+    }
+  }, [projectMeta, scope, isScoped, navigate, filesPath, diagramsPath, backTo]);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError('');
-    fetch(backendUrl(`/api/v1/site-sections/scoped/${encodeURIComponent(slug)}/projects/${encodeURIComponent(projectId)}/documents`))
+    const path = isScoped
+      ? `/api/v1/site-sections/scoped/${encodeURIComponent(slug)}/projects/${encodeURIComponent(projectId)}/documents?scope=${encodeURIComponent(scope)}`
+      : `/api/v1/projects/${encodeURIComponent(projectId)}/documents?scope=${encodeURIComponent(scope)}`;
+    fetch(backendUrl(path))
       .then((res) => res.json().then((d) => ({ ok: res.ok, data: d })))
       .then(({ ok, data }) => {
         if (!ok) throw new Error(data?.error || 'Ошибка загрузки документов');
@@ -51,7 +98,7 @@ function SectionProjectPage({ onOpenDocument }) {
     return () => {
       cancelled = true;
     };
-  }, [slug, projectId]);
+  }, [projectId, slug, isScoped, scope]);
 
   const docTypes = useMemo(() => {
     const s = new Set();
@@ -70,7 +117,6 @@ function SectionProjectPage({ onOpenDocument }) {
     [documents, filterType, searchQuery]
   );
 
-  // Как в ProjectPage.jsx (+ расширения для scoped-загрузок)
   const iconForExt = (ext) => {
     const e = (ext || '').toLowerCase();
     if (e === 'pdf') return '📄';
@@ -86,14 +132,39 @@ function SectionProjectPage({ onOpenDocument }) {
     onOpenDocument({ ...doc, url });
   };
 
+  const pageHeading = scope === 'diagrams' ? 'Диаграммы' : 'Файлы проекта';
+  const showFiles = projectMeta ? showProjectFilesNav(projectMeta) : false;
+  const showDiag = projectMeta ? showProjectDiagramsNav(projectMeta, { scoped: isScoped }) : false;
+
   return (
     <div className="project-page">
-      <Link to={`/s/${slug}`} className="back-to-main-button">
+      <Link to={backTo} className="back-to-main-button">
         ← К списку проектов
       </Link>
 
       <div className="project-header">
-        <h2 className="page-title">{projectTitle}</h2>
+        <h2 className="page-title">{pageHeading}</h2>
+        <p className="project-subtitle">{projectTitle}</p>
+        {(showFiles || showDiag) && (
+          <nav className="project-subnav" aria-label="Разделы проекта">
+            {showFiles && (
+              <Link
+                to={filesPath}
+                className={`project-subnav-link ${scope === 'admin' ? 'project-subnav-link--active' : ''}`}
+              >
+                Файлы проекта
+              </Link>
+            )}
+            {showDiag && (
+              <Link
+                to={diagramsPath}
+                className={`project-subnav-link ${scope === 'diagrams' ? 'project-subnav-link--active' : ''}`}
+              >
+                Диаграммы
+              </Link>
+            )}
+          </nav>
+        )}
       </div>
 
       <div className="project-layout">
@@ -133,7 +204,11 @@ function SectionProjectPage({ onOpenDocument }) {
               {error}
             </p>
           ) : documents.length === 0 ? (
-            <p className="no-documents">Нет документов</p>
+            <p className="no-documents">
+              {scope === 'diagrams'
+                ? 'Нет диаграмм для этого проекта'
+                : 'Нет загруженных файлов'}
+            </p>
           ) : (
             <div className="documents-list">
               {filteredDocs.length === 0 ? (
@@ -176,7 +251,12 @@ function SectionProjectPage({ onOpenDocument }) {
                           ⬇
                         </a>
                       ) : (
-                        <button type="button" className="doc-action-btn" onClick={(e) => e.stopPropagation()} title="Скачать">
+                        <button
+                          type="button"
+                          className="doc-action-btn"
+                          onClick={(e) => e.stopPropagation()}
+                          title="Скачать"
+                        >
                           ⬇
                         </button>
                       )}
@@ -192,4 +272,4 @@ function SectionProjectPage({ onOpenDocument }) {
   );
 }
 
-export default SectionProjectPage;
+export default ProjectDocumentsPage;

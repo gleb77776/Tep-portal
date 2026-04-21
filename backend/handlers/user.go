@@ -333,7 +333,7 @@ func DebugADUser(c *gin.Context) {
 		return
 	}
 
-	conn, err := ldap.DialURL(ldapURL)
+	conn, err := ldapOpen(ldapURL)
 	if err != nil {
 		resp.OK = false
 		resp.Error = err.Error()
@@ -349,7 +349,7 @@ func DebugADUser(c *gin.Context) {
 		return
 	}
 
-	// Попробуем поиск как в fetchUserFromAD.
+	// Попробуем поиск как в fetchUserFromADUncached.
 	searchReq := ldap.NewSearchRequest(
 		ldapBaseDN,
 		ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
@@ -441,7 +441,7 @@ func DebugADSearch(c *gin.Context) {
 		return
 	}
 
-	conn, err := ldap.DialURL(ldapURL)
+	conn, err := ldapOpen(ldapURL)
 	if err != nil {
 		resp.OK = false
 		resp.Error = err.Error()
@@ -600,7 +600,7 @@ func UserLogin(c *gin.Context) {
 		ldapURL = "ldap://" + ldapServer + ":389"
 	}
 
-	conn, err := ldap.DialURL(ldapURL)
+	conn, err := ldapOpen(ldapURL)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "ldap connect error: " + err.Error()})
 		return
@@ -613,6 +613,7 @@ func UserLogin(c *gin.Context) {
 		return
 	}
 
+	invalidateAdUserCache(username)
 	// Подтягиваем остальные атрибуты через service-account (fetchUserFromAD).
 	user, err := fetchUserFromAD(username)
 	if err != nil {
@@ -662,7 +663,7 @@ func toPhotoFilename(username string) []string {
 	}
 }
 
-func fetchUserFromAD(username string) (*UserResponse, error) {
+func fetchUserFromADUncached(username string) (*UserResponse, error) {
 	// Поддержка конфигурации как в телефонном справочнике
 	ldapServer := os.Getenv("LDAP_SERVER")   // tep-m.ru
 	ldapUser := os.Getenv("LDAP_USER")       // Batyanovskiy_help
@@ -693,7 +694,7 @@ func fetchUserFromAD(username string) (*UserResponse, error) {
 		ldapURL = "ldap://" + ldapServer + ":389"
 	}
 
-	conn, err := ldap.DialURL(ldapURL)
+	conn, err := ldapOpen(ldapURL)
 	if err != nil {
 		return nil, err
 	}
@@ -846,7 +847,7 @@ func ListADUsers() ([]UserResponse, error) {
 	if !strings.HasPrefix(ldapURL, "ldap://") && !strings.HasPrefix(ldapURL, "ldaps://") {
 		ldapURL = "ldap://" + ldapServer + ":389"
 	}
-	conn, err := ldap.DialURL(ldapURL)
+	conn, err := ldapOpen(ldapURL)
 	if err != nil {
 		return nil, err
 	}

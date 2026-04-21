@@ -261,13 +261,23 @@ func GetAdminAccess(c *gin.Context) {
 	c.JSON(http.StatusOK, info)
 }
 
+// accessInfoContextKey — кэш результата buildAccessInfo на время одного HTTP-запроса.
+// Иначе цепочка middleware (например RequireAdmin на группе + RequireAdminOrDocumentation на
+// маршруте) дважды вызывала бы GetUserFromRequest/LDAP и давала ~2× таймаут (20с+20с=40с).
+const accessInfoContextKey = "access_info"
+
 func requireRole(c *gin.Context) (AccessInfo, bool) {
+	if v, ok := c.Get(accessInfoContextKey); ok {
+		if info, ok2 := v.(AccessInfo); ok2 {
+			return info, true
+		}
+	}
 	info, err := buildAccessInfo(c)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return AccessInfo{}, false
 	}
-	c.Set("access_info", info)
+	c.Set(accessInfoContextKey, info)
 	return info, true
 }
 

@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { backendUrl } from '../backendUrl';
+import { folderLinkHref } from '../utils/folderLinkHref';
+import { showProjectDiagramsNav, showProjectFilesNav } from '../utils/projectNav';
 
 /**
  * Список проектов для шаблона «projects» (/s/:slug).
@@ -83,16 +85,52 @@ function SectionProjectsPage() {
           <p className="no-documents">Ничего не найдено по запросу</p>
         ) : (
           <ul className="projects-list">
-            {filteredProjects.map((project) => (
-              <li key={project.id} className="project-item">
-                <Link to={`/s/${slug}/project/${project.id}`} className="project-link">
-                  <span className="project-name">{project.title}</span>
-                  {project.source === 'admin' && project.author && (
-                    <span className="project-badge">Админ</span>
+            {filteredProjects.map((project) => {
+              const folderHref = folderLinkHref(project.folderLink);
+              const showDiag = showProjectDiagramsNav(project, { scoped: true });
+              const showFiles = showProjectFilesNav(project);
+              return (
+                <li key={project.id} className="project-item project-item--stacked">
+                  <div className="project-item__title-row">
+                    {folderHref ? (
+                      <a
+                        href={folderHref}
+                        className="project-link--folder"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="Открыть папку проекта"
+                      >
+                        <span className="project-name">{project.title}</span>
+                      </a>
+                    ) : (
+                      <span className="project-title-plain" title="Ссылку на папку можно задать в админке раздела">
+                        {project.title}
+                      </span>
+                    )}
+                  </div>
+                  {(showFiles || showDiag) && (
+                    <div className="project-item__subnav">
+                      {showFiles && folderHref && (
+                        <a
+                          href={folderHref}
+                          className="project-sublink"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="Открыть папку проекта в проводнике (file:// или сеть)"
+                        >
+                          Файлы проекта
+                        </a>
+                      )}
+                      {showDiag && (
+                        <Link to={`/s/${slug}/project/${project.id}/diagrams`} className="project-sublink">
+                          Диаграммы
+                        </Link>
+                      )}
+                    </div>
                   )}
-                </Link>
-              </li>
-            ))}
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>

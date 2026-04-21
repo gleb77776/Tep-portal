@@ -26,3 +26,8 @@ Thumbs.db
 # Временное
 *.swp
 *.tmp
+
+# Локальные медиа и тяжёлые выгрузки схем (не в репозиторий)
+*.mov
+data/diagrams/**/*.pdf
+data/project_files_admin/

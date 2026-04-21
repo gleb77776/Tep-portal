@@ -17,7 +17,7 @@ export function getGuestProjectIds() {
 
 export function isGuestProjectRoute(pathname) {
   const p = (pathname || '').replace(/\/+$/, '') || '/';
-  const m = p.match(/^\/projects\/([^/]+)$/);
+  const m = p.match(/^\/projects\/([^/]+)(?:\/(files|diagrams))?$/);
   if (!m) return false;
   return getGuestProjectIds().includes(m[1]);
 }

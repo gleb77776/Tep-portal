@@ -95,6 +95,7 @@ func main() {
 		api.POST("/user/login", handlers.UserLogin)
 		api.GET("/diagrams", handlers.ListDiagrams)
 		api.GET("/projects", handlers.ListProjects)
+		api.GET("/projects/:projectId", handlers.GetPublicProject)
 		api.GET("/projects/:projectId/documents", handlers.ListProjectDocuments)
 		api.GET("/smk/list", handlers.ListSMK)
 		api.POST("/smk/folder", handlers.CreateSMKFolder)
@@ -116,6 +117,7 @@ func main() {
 		api.GET("/site-sections/dynamic/:slug/list", handlers.ListDynamicDocs)
 		api.GET("/section-menus/:sectionId", handlers.ListSectionMenu)
 		api.GET("/site-sections/scoped/:slug/projects", handlers.ListScopedProjects)
+		api.GET("/site-sections/scoped/:slug/projects/:projectId", handlers.GetScopedProject)
 		api.GET("/site-sections/scoped/:slug/projects/:projectId/documents", handlers.ListScopedProjectDocuments)
 		api.GET("/debug/identity", handlers.DebugRequestIdentity)
 		api.POST("/admin/login", handlers.AdminLogin)
@@ -161,6 +163,8 @@ func main() {
 
 			admin.GET("/projects", handlers.RequireAdminOrDocumentation, handlers.ListAdminProjects)
 			admin.POST("/projects", handlers.RequireAdminOrDocumentation, handlers.CreateAdminProject)
+			admin.POST("/projects/reorder", handlers.RequireAdminOrDocumentation, handlers.ReorderAdminProjects)
+			admin.PUT("/projects/:id/settings", handlers.RequireAdminOrDocumentation, handlers.UpdateProjectSettings)
 			admin.PUT("/projects/:id/visibility", handlers.RequireAdministrator, handlers.SetProjectVisibility)
 			// Удаление проекта в текущей реализации = скрыть из выдачи сайта.
 			// Сделано более специфичным, чтобы не конфликтовать с роутами файлов.
@@ -193,6 +197,8 @@ func main() {
 
 			admin.GET("/site-sections/scoped/:slug/projects", handlers.RequireScopedProjectsForDocumentation, handlers.ListAdminScopedProjects)
 			admin.POST("/site-sections/scoped/:slug/projects", handlers.RequireScopedProjectsForDocumentation, handlers.CreateAdminScopedProject)
+			admin.POST("/site-sections/scoped/:slug/projects/reorder", handlers.RequireScopedProjectsForDocumentation, handlers.ReorderScopedProjects)
+			admin.PUT("/site-sections/scoped/:slug/projects/:id/settings", handlers.RequireScopedProjectsForDocumentation, handlers.UpdateScopedProjectSettings)
 			admin.GET("/site-sections/scoped/:slug/projects/:id/files", handlers.RequireScopedProjectsForDocumentation, handlers.ListAdminScopedProjectFiles)
 			admin.POST("/site-sections/scoped/:slug/projects/:id/files", handlers.RequireScopedProjectsForDocumentation, handlers.UploadScopedProjectFile)
 			admin.DELETE("/site-sections/scoped/:slug/projects/:id/files/:docId", handlers.RequireAdministrator, handlers.DeleteScopedProjectFile)

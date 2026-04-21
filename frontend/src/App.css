@@ -909,13 +909,103 @@ body.admin-hide-scrollbar .center-content::-webkit-scrollbar {
   flex: 1;
 }
 
-.project-badge {
-  font-size: 12px;
-  color: #4aa8d8;
-  background-color: #e6f0ff;
-  padding: 2px 8px;
-  border-radius: 4px;
-  margin-left: 8px;
+.project-item--stacked {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px 16px;
+  border-radius: 8px;
+}
+
+.project-item--stacked:hover {
+  background-color: #f5f9ff;
+}
+
+.project-item__title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+}
+
+.project-link--folder {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 0;
+  color: #1e5cb0;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  width: auto;
+}
+
+.project-link--folder:hover {
+  text-decoration: underline;
+}
+
+.project-title-plain {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1e5cb0;
+}
+
+.project-item__subnav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding-left: 2px;
+}
+
+.project-sublink {
+  font-size: 14px;
+  color: #1e5cb0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.project-sublink:hover {
+  color: #0d3d78;
+}
+
+.project-subtitle {
+  margin: 8px 0 0;
+  font-size: 15px;
+  color: #555;
+  font-weight: normal;
+}
+
+.project-subnav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.project-subnav-link {
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid #4aa8d8;
+  color: #1e5cb0;
+  text-decoration: none;
+  font-size: 14px;
+  background: #fff;
+}
+
+.project-subnav-link:hover {
+  background: #e6f0ff;
+}
+
+.project-subnav-link--active {
+  background: #1e5cb0;
+  color: #fff;
+  border-color: #1e5cb0;
 }
 
 /* КАРТОЧКА ПРОЕКТА */
@@ -1086,17 +1176,79 @@ body.admin-hide-scrollbar .center-content::-webkit-scrollbar {
   padding: 20px;
 }
 
+.document-viewer-overlay--expanded {
+  padding: 0;
+  align-items: stretch;
+  justify-content: stretch;
+}
+
 .document-viewer {
   background: white;
   border-radius: 12px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
   border: 2px solid #4aa8d8;
-  max-width: 1100px;
-  width: 100%;
-  max-height: 90vh;
+  /* Ширина почти на весь экран: flex по умолчанию сжимает дочерние блоки — запрещаем сжатие */
+  width: min(96vw, 1600px);
+  max-width: min(96vw, 1600px);
+  flex: 0 0 auto;
+  align-self: center;
+  box-sizing: border-box;
+  /* Явная высота, иначе flex-дети (iframe с height:0) не растягиваются и окно «сплющивается» */
+  min-height: min(82vh, 920px);
+  max-height: 92vh;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+}
+
+.document-viewer--expanded {
+  max-width: none;
+  max-height: none;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+  border-left: none;
+  border-right: none;
+}
+
+.document-viewer:fullscreen,
+.document-viewer:-webkit-full-screen {
+  max-width: none;
+  max-height: none;
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+}
+
+.document-viewer--expanded .viewer-body,
+.document-viewer:fullscreen .viewer-body,
+.document-viewer:-webkit-full-screen .viewer-body {
+  min-height: 0;
+  flex: 1 1 0;
+}
+
+.document-viewer--expanded .viewer-preview-grow,
+.document-viewer:fullscreen .viewer-preview-grow,
+.document-viewer:-webkit-full-screen .viewer-preview-grow {
+  min-height: 0;
+  flex: 1 1 0;
+}
+
+.document-viewer--expanded .viewer-iframe,
+.document-viewer:fullscreen .viewer-iframe,
+.document-viewer:-webkit-full-screen .viewer-iframe {
+  height: 100%;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.document-viewer--expanded .viewer-video,
+.document-viewer:fullscreen .viewer-video,
+.document-viewer:-webkit-full-screen .viewer-video {
+  height: 100%;
+  min-height: 0;
+  flex: 1 1 auto;
 }
 
 .viewer-header {
@@ -1145,17 +1297,27 @@ body.admin-hide-scrollbar .center-content::-webkit-scrollbar {
   border-color: #4aa8d8;
 }
 
-.viewer-content {
-  flex: 1;
+.viewer-body {
+  flex: 1 1 auto;
+  min-height: min(58vh, 720px);
   overflow: auto;
-  padding: 20px;
-  min-height: 400px;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.viewer-preview-grow {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: min(62vh, 760px);
 }
 
 .viewer-iframe {
   width: 100%;
-  height: 60vh;
-  min-height: 400px;
+  flex: 1 1 auto;
+  min-height: min(58vh, 720px);
+  height: min(65vh, 800px);
   border: 1px solid #e0e0e0;
   border-radius: 8px;
 }
@@ -1170,10 +1332,30 @@ body.admin-hide-scrollbar .center-content::-webkit-scrollbar {
 
 .viewer-video {
   width: 100%;
-  max-height: 70vh;
+  flex: 1 1 auto;
+  min-height: min(40vh, 480px);
+  height: min(58vh, 720px);
+  max-height: none;
   border-radius: 8px;
   border: 1px solid #e0e0e0;
   background: #000;
+}
+
+.viewer-preview-grow .viewer-video {
+  object-fit: contain;
+}
+
+.viewer-footer {
+  flex-shrink: 0;
+  padding: 10px 20px 14px;
+  border-top: 1px solid #e0e0e0;
+  background: #f8fafc;
+}
+
+.viewer-footer-line {
+  font-size: 13px;
+  color: #555;
+  line-height: 1.45;
 }
 
 .viewer-btn-favorite {
@@ -2323,9 +2505,36 @@ body.admin-hide-scrollbar .center-content::-webkit-scrollbar {
   color: #9ca3af;
 }
 
-[data-theme="dark"] .project-badge {
-  color: #8ab4f8;
+[data-theme="dark"] .project-item--stacked:hover {
   background-color: #2d333d;
+}
+
+[data-theme="dark"] .project-link--folder {
+  color: #8ab4f8;
+}
+
+[data-theme="dark"] .project-title-plain {
+  color: #8ab4f8;
+}
+
+[data-theme="dark"] .project-sublink {
+  color: #7dd3fc;
+}
+
+[data-theme="dark"] .project-subtitle {
+  color: #9ca3af;
+}
+
+[data-theme="dark"] .project-subnav-link {
+  background: #252a33;
+  border-color: #5a9bd5;
+  color: #8ab4f8;
+}
+
+[data-theme="dark"] .project-subnav-link--active {
+  background: #5a9bd5;
+  color: #fff;
+  border-color: #5a9bd5;
 }
 
 [data-theme="dark"] .news-title,
@@ -2488,6 +2697,15 @@ body.admin-hide-scrollbar .center-content::-webkit-scrollbar {
 [data-theme="dark"] .upload-modal {
   background-color: #252a33;
   border-color: #3d4553;
+}
+
+[data-theme="dark"] .viewer-footer {
+  background: #1e2329;
+  border-color: #3d4553;
+}
+
+[data-theme="dark"] .viewer-footer-line {
+  color: #c4cbd4;
 }
 
 [data-theme="dark"] .viewer-title,
@@ -3144,6 +3362,95 @@ body.admin-hide-scrollbar .center-content::-webkit-scrollbar {
 }
 
 /* --- Админ: управление проектами --- */
+.admin-projects-settings {
+  margin-bottom: 20px;
+  padding: 16px;
+  border-radius: 10px;
+  border: 1px solid #4aa8d8;
+  background: #f8fbff;
+}
+
+.admin-projects-settings__title {
+  margin: 0 0 12px;
+  font-size: 16px;
+  color: #1e5cb0;
+}
+
+.admin-projects-settings__label {
+  display: block;
+  margin-bottom: 6px !important;
+  color: #0d47a1;
+}
+
+.admin-projects-settings__hint {
+  margin: 0 0 10px !important;
+  color: #444 !important;
+  line-height: 1.5;
+}
+
+.admin-projects-settings__hint code {
+  font-size: 11px;
+  background: rgba(0, 0, 0, 0.06);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: #1a1a1a;
+}
+
+.admin-projects-settings__input {
+  max-width: 100%;
+  margin-bottom: 12px;
+}
+
+.admin-projects-settings__checkbox-label {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  margin-bottom: 12px !important;
+  color: #0d47a1;
+}
+
+.admin-projects-settings__checkbox-label input[type='checkbox'] {
+  width: auto;
+  accent-color: #1e5cb0;
+}
+
+[data-theme='dark'] .admin-projects-settings {
+  background: #252a33;
+  border-color: #5a9bd5;
+  box-shadow: inset 0 0 0 1px rgba(90, 155, 213, 0.12);
+}
+
+[data-theme='dark'] .admin-projects-settings__title {
+  color: #8ab4f8;
+}
+
+[data-theme='dark'] .admin-projects-settings__label,
+[data-theme='dark'] .admin-projects-settings__checkbox-label {
+  color: #e0e4e8 !important;
+}
+
+[data-theme='dark'] .admin-projects-settings .admin-form-label {
+  color: #e0e4e8;
+}
+
+[data-theme='dark'] .admin-projects-settings__hint {
+  color: #c8d0da !important;
+}
+
+[data-theme='dark'] .admin-projects-settings__hint code {
+  background: #1e2329;
+  color: #e8edf4;
+  border: 1px solid #3d4553;
+}
+
+[data-theme='dark'] .admin-projects-settings .admin-form-input {
+  background: #2d333d;
+  border-color: #5a9bd5;
+  color: #e0e4e8;
+}
+
 .admin-projects-layout {
   display: flex;
   gap: 18px;

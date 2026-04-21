@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"mime/multipart"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -25,6 +26,10 @@ type AdminProject struct {
 	Author    string `json:"author,omitempty"`
 	CreatedAt string `json:"createdAt,omitempty"`
 	Source    string `json:"source"` // "diagrams" | "admin"
+	// FolderLink — ссылка на папку в сети (file://, https://, UNC и т.д.), показывается в списке проектов.
+	FolderLink string `json:"folderLink,omitempty"`
+	// DiagramsEnabled: nil = по умолчанию показывать блок «Диаграммы» (глобальные проекты); false — скрыть.
+	DiagramsEnabled *bool `json:"diagramsEnabled,omitempty"`
 }
 
 type ProjectDocument struct {
@@ -162,25 +167,77 @@ func writeJSONFile(path string, v any) error {
 	return os.WriteFile(path, data, 0644)
 }
 
-func loadAdminProjects() ([]AdminProject, error) {
+// loadProjectsMeta читает projects_admin.json: слайс проектов и полный порядок id для списка (в т.ч. только из diagrams).
+func loadProjectsMeta() ([]AdminProject, []string, error) {
 	path := getProjectsMetaPath()
 	var wrap struct {
 		Projects []AdminProject `json:"projects"`
+		Order    []string       `json:"order,omitempty"`
 	}
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		return []AdminProject{}, nil
+		return []AdminProject{}, nil, nil
 	}
 	if err := readJSONFile(path, &wrap); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if wrap.Projects == nil {
-		return []AdminProject{}, nil
+		wrap.Projects = []AdminProject{}
 	}
-	return wrap.Projects, nil
+	return wrap.Projects, wrap.Order, nil
 }
 
+func loadAdminProjects() ([]AdminProject, error) {
+	p, _, err := loadProjectsMeta()
+	return p, err
+}
+
+func writeProjectsMeta(list []AdminProject, order []string) error {
+	payload := map[string]any{"projects": list}
+	if len(order) > 0 {
+		payload["order"] = order
+	}
+	err := writeJSONFile(getProjectsMetaPath(), payload)
+	if err == nil {
+		invalidateProjectMapCache()
+	}
+	return err
+}
+
+// saveAdminProjects сохраняет проекты и по возможности сохраняет порядок order (в т.ч. слоты только из diagrams).
 func saveAdminProjects(list []AdminProject) error {
-	return writeJSONFile(getProjectsMetaPath(), map[string]any{"projects": list})
+	_, oldOrder, err := loadProjectsMeta()
+	if err != nil {
+		return err
+	}
+	inList := make(map[string]struct{}, len(list))
+	for _, p := range list {
+		inList[p.ID] = struct{}{}
+	}
+	seen := make(map[string]struct{})
+	var newOrder []string
+	for _, id := range oldOrder {
+		id = strings.TrimSpace(id)
+		if id == "" {
+			continue
+		}
+		if _, dup := seen[id]; dup {
+			continue
+		}
+		if _, ok := inList[id]; ok {
+			newOrder = append(newOrder, id)
+			seen[id] = struct{}{}
+			continue
+		}
+		// id только в order (например проект из diagrams без строки в projects) — оставляем позицию
+		newOrder = append(newOrder, id)
+		seen[id] = struct{}{}
+	}
+	for _, p := range list {
+		if _, ok := seen[p.ID]; !ok {
+			newOrder = append(newOrder, p.ID)
+		}
+	}
+	return writeProjectsMeta(list, newOrder)
 }
 
 func loadAdminDocs() (map[string][]adminDocMeta, error) {
@@ -251,6 +308,38 @@ func buildAdminProjectMap() (map[string]AdminProject, map[string]bool, error) {
 	return mp, diagrams, nil
 }
 
+// Кэш списка проектов: повторные запросы (список + документы + meta) не читают диск подряд.
+var projectMapSnapshot struct {
+	mu      sync.Mutex
+	until   time.Time
+	mp      map[string]AdminProject
+	diagram map[string]bool
+	err     error
+}
+
+const projectMapCacheTTL = 4 * time.Second
+
+func invalidateProjectMapCache() {
+	projectMapSnapshot.mu.Lock()
+	projectMapSnapshot.until = time.Time{}
+	projectMapSnapshot.mu.Unlock()
+}
+
+func getProjectMapCached() (map[string]AdminProject, map[string]bool, error) {
+	now := time.Now()
+	projectMapSnapshot.mu.Lock()
+	defer projectMapSnapshot.mu.Unlock()
+	if projectMapSnapshot.mp != nil && now.Before(projectMapSnapshot.until) {
+		return projectMapSnapshot.mp, projectMapSnapshot.diagram, projectMapSnapshot.err
+	}
+	mp, d, err := buildAdminProjectMap()
+	projectMapSnapshot.mp = mp
+	projectMapSnapshot.diagram = d
+	projectMapSnapshot.err = err
+	projectMapSnapshot.until = time.Now().Add(projectMapCacheTTL)
+	return mp, d, err
+}
+
 // getDiagramProjectTitle переводит "имя папки" из data/diagrams (например "68N115_YAC")
 // в человекочитаемое название как в вашем интерфейсе проектов.
 //
@@ -295,6 +384,20 @@ func getDiagramProjectTitle(diagramProjectID string) string {
 
 func projectVisible(p AdminProject) bool {
 	return p.Visible
+}
+
+func projectDiagramsEnabled(p AdminProject) bool {
+	if p.DiagramsEnabled != nil {
+		return *p.DiagramsEnabled
+	}
+	return true
+}
+
+func validateFolderLink(s string) error {
+	if len([]rune(s)) > 2048 {
+		return errors.New("folder link too long")
+	}
+	return nil
 }
 
 // loadDiagramTitleMap читает data/diagrams/<project>/diagram_titles.json и опционально
@@ -363,20 +466,46 @@ func ListProjects(c *gin.Context) {
 	projectsMu.RLock()
 	defer projectsMu.RUnlock()
 
-	mp, _, err := buildAdminProjectMap()
+	mp, _, err := getProjectMapCached()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-
-	out := make([]AdminProject, 0, len(mp))
-	for _, p := range mp {
-		if !projectVisible(p) {
-			continue
+	adminList, order, err := loadProjectsMeta()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	merged := mergeProjectListOrdered(adminList, order, mp)
+	out := make([]AdminProject, 0, len(merged))
+	for _, p := range merged {
+		if projectVisible(p) {
+			out = append(out, p)
 		}
-		out = append(out, p)
 	}
 	c.JSON(http.StatusOK, out)
+}
+
+// GET /api/v1/projects/:projectId — один проект (для карточки без загрузки всего списка).
+func GetPublicProject(c *gin.Context) {
+	projectID := strings.TrimSpace(c.Param("projectId"))
+	if projectID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid project id"})
+		return
+	}
+	projectsMu.RLock()
+	defer projectsMu.RUnlock()
+	mp, _, err := getProjectMapCached()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	p, ok := mp[projectID]
+	if !ok || !projectVisible(p) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "project not found"})
+		return
+	}
+	c.JSON(http.StatusOK, p)
 }
 
 // GET /api/v1/admin/projects
@@ -384,19 +513,130 @@ func ListAdminProjects(c *gin.Context) {
 	projectsMu.RLock()
 	defer projectsMu.RUnlock()
 
-	mp, _, err := buildAdminProjectMap()
+	mp, _, err := getProjectMapCached()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-
-	out := make([]AdminProject, 0, len(mp))
-	for _, p := range mp {
-		out = append(out, p)
+	adminList, order, err := loadProjectsMeta()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
 	}
-	// Сортируем: сначала видимые, потом по title
-	sortProjects(out)
+	out := mergeProjectListOrdered(adminList, order, mp)
 	c.JSON(http.StatusOK, out)
+}
+
+// mergeProjectListOrdered: если в файле задано поле order — полный порядок id (админка + только diagrams);
+// иначе порядок строк projects, затем остальные из diagrams (старое поведение).
+func mergeProjectListOrdered(adminList []AdminProject, order []string, mp map[string]AdminProject) []AdminProject {
+	if len(order) > 0 {
+		seen := make(map[string]struct{}, len(mp))
+		out := make([]AdminProject, 0, len(mp))
+		for _, id := range order {
+			id = strings.TrimSpace(id)
+			if id == "" {
+				continue
+			}
+			if p, ok := mp[id]; ok {
+				out = append(out, p)
+				seen[id] = struct{}{}
+			}
+		}
+		rest := make([]AdminProject, 0, len(mp))
+		for id, p := range mp {
+			if _, ok := seen[id]; ok {
+				continue
+			}
+			rest = append(rest, p)
+		}
+		sortProjects(rest)
+		out = append(out, rest...)
+		return out
+	}
+	seen := make(map[string]struct{}, len(mp))
+	out := make([]AdminProject, 0, len(mp))
+	for _, p := range adminList {
+		if merged, ok := mp[p.ID]; ok {
+			out = append(out, merged)
+			seen[p.ID] = struct{}{}
+		}
+	}
+	rest := make([]AdminProject, 0, len(mp))
+	for id, p := range mp {
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		rest = append(rest, p)
+	}
+	sortProjects(rest)
+	out = append(out, rest...)
+	return out
+}
+
+// POST /api/v1/admin/projects/reorder — тело { "ids": ["id1","id2",...] } в нужном порядке (как в списке админки).
+func ReorderAdminProjects(c *gin.Context) {
+	var req struct {
+		IDs []string `json:"ids"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil || len(req.IDs) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ids required"})
+		return
+	}
+	rank := make(map[string]int, len(req.IDs))
+	for i, id := range req.IDs {
+		id = strings.TrimSpace(id)
+		if id == "" {
+			continue
+		}
+		if _, ok := rank[id]; !ok {
+			rank[id] = i
+		}
+	}
+	projectsMu.Lock()
+	defer projectsMu.Unlock()
+	adminList, err := loadAdminProjects()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	sort.SliceStable(adminList, func(i, j int) bool {
+		ri, okI := rank[adminList[i].ID]
+		rj, okJ := rank[adminList[j].ID]
+		switch {
+		case okI && okJ:
+			return ri < rj
+		case okI && !okJ:
+			return true
+		case !okI && okJ:
+			return false
+		default:
+			return strings.ToLower(adminList[i].Title) < strings.ToLower(adminList[j].Title)
+		}
+	})
+	fullOrder := normalizeProjectIDOrder(req.IDs)
+	if err := writeProjectsMeta(adminList, fullOrder); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+func normalizeProjectIDOrder(ids []string) []string {
+	seen := make(map[string]struct{})
+	var out []string
+	for _, id := range ids {
+		id = strings.TrimSpace(id)
+		if id == "" {
+			continue
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		out = append(out, id)
+	}
+	return out
 }
 
 func sortProjects(list []AdminProject) {
@@ -420,13 +660,19 @@ func sortProjects(list []AdminProject) {
 // POST /api/v1/admin/projects
 func CreateAdminProject(c *gin.Context) {
 	var req struct {
-		Title string `json:"title"`
+		Title             string `json:"title"`
+		FolderLink        string `json:"folderLink"`
+		DiagramsEnabled   *bool  `json:"diagramsEnabled"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid body"})
 		return
 	}
 	if err := validateProjectTitle(req.Title); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := validateFolderLink(strings.TrimSpace(req.FolderLink)); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -455,12 +701,14 @@ func CreateAdminProject(c *gin.Context) {
 
 	now := time.Now().UTC().Format(time.RFC3339)
 	item := AdminProject{
-		ID:        id,
-		Title:     strings.TrimSpace(req.Title),
-		Visible:   true,
-		Author:    author,
-		CreatedAt: now,
-		Source:    "admin",
+		ID:                id,
+		Title:             strings.TrimSpace(req.Title),
+		Visible:           true,
+		Author:            author,
+		CreatedAt:         now,
+		Source:            "admin",
+		FolderLink:        strings.TrimSpace(req.FolderLink),
+		DiagramsEnabled:   req.DiagramsEnabled,
 	}
 	list = append(list, item)
 	if err := saveAdminProjects(list); err != nil {
@@ -520,6 +768,71 @@ func SetProjectVisibility(c *gin.Context) {
 		return
 	}
 
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+// PUT /api/v1/admin/projects/:id/settings
+func UpdateProjectSettings(c *gin.Context) {
+	projectID := strings.TrimSpace(c.Param("id"))
+	if projectID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid project id"})
+		return
+	}
+	var req struct {
+		FolderLink      string `json:"folderLink"`
+		DiagramsEnabled *bool  `json:"diagramsEnabled"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid body"})
+		return
+	}
+	if err := validateFolderLink(strings.TrimSpace(req.FolderLink)); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	projectsMu.Lock()
+	defer projectsMu.Unlock()
+
+	mp, _, err := getProjectMapCached()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	base, ok := mp[projectID]
+	if !ok {
+		c.JSON(http.StatusNotFound, gin.H{"error": "project not found"})
+		return
+	}
+
+	adminList, err := loadAdminProjects()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	found := false
+	for i := range adminList {
+		if adminList[i].ID == projectID {
+			adminList[i].FolderLink = strings.TrimSpace(req.FolderLink)
+			if req.DiagramsEnabled != nil {
+				adminList[i].DiagramsEnabled = req.DiagramsEnabled
+			}
+			found = true
+			break
+		}
+	}
+	if !found {
+		np := base
+		np.FolderLink = strings.TrimSpace(req.FolderLink)
+		if req.DiagramsEnabled != nil {
+			np.DiagramsEnabled = req.DiagramsEnabled
+		}
+		adminList = append(adminList, np)
+	}
+	if err := saveAdminProjects(adminList); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
@@ -713,13 +1026,23 @@ func DeleteProjectFile(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
-// GET /api/v1/projects/:projectId/documents
+// GET /api/v1/projects/:projectId/documents?scope=all|admin|diagrams
 func ListProjectDocuments(c *gin.Context) {
 	projectID := c.Param("projectId")
+	scope := strings.TrimSpace(strings.ToLower(c.Query("scope")))
+	if scope == "" {
+		scope = "all"
+	}
+	switch scope {
+	case "all", "admin", "diagrams":
+	default:
+		scope = "all"
+	}
+
 	projectsMu.RLock()
 	defer projectsMu.RUnlock()
 
-	mp, _, err := buildAdminProjectMap()
+	mp, _, err := getProjectMapCached()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -730,37 +1053,45 @@ func ListProjectDocuments(c *gin.Context) {
 		return
 	}
 
+	showDiagrams := projectDiagramsEnabled(p)
+
 	// diagrams docs
 	diagramsDocs := []ProjectDocument{}
-	basePath := getDiagramsPathForProjects()
-	projectDir := filepath.Join(basePath, projectID)
-	if _, err := os.Stat(projectDir); err == nil {
-		titleByFile := loadDiagramTitleMap(projectDir)
-		files, _ := os.ReadDir(projectDir)
-		for idx, f := range files {
-			if f.IsDir() {
-				continue
-			}
-			name := f.Name()
-			if name == "diagram_titles.json" {
-				continue
-			}
-			displayName := name
-			if titleByFile != nil {
-				if t, ok := titleByFile[name]; ok && strings.TrimSpace(t) != "" {
-					displayName = strings.TrimSpace(t)
+	if (scope == "all" || scope == "diagrams") && showDiagrams {
+		basePath := getDiagramsPathForProjects()
+		projectDir := filepath.Join(basePath, projectID)
+		if _, err := os.Stat(projectDir); err == nil {
+			titleByFile := loadDiagramTitleMap(projectDir)
+			files, _ := os.ReadDir(projectDir)
+			for idx, f := range files {
+				if f.IsDir() {
+					continue
 				}
+				name := f.Name()
+				if name == "diagram_titles.json" {
+					continue
+				}
+				displayName := name
+				if titleByFile != nil {
+					if t, ok := titleByFile[name]; ok && strings.TrimSpace(t) != "" {
+						displayName = strings.TrimSpace(t)
+					}
+				}
+				ext := strings.ToLower(strings.TrimPrefix(filepath.Ext(name), "."))
+				addedAt := ""
+				if fi, err := f.Info(); err == nil {
+					addedAt = fi.ModTime().UTC().Format(time.RFC3339)
+				}
+				diagramsDocs = append(diagramsDocs, ProjectDocument{
+					ID:      fmt.Sprintf("diag-%d", idx),
+					Name:    displayName,
+					Ext:     ext,
+					Url:     fmt.Sprintf("/diagrams/%s/%s", projectID, urlPathEscape(name)),
+					AddedBy: "PDMS",
+					AddedAt: addedAt,
+					Source:  "diagrams",
+				})
 			}
-			ext := strings.ToLower(strings.TrimPrefix(filepath.Ext(name), "."))
-			diagramsDocs = append(diagramsDocs, ProjectDocument{
-				ID:      fmt.Sprintf("diag-%d", idx),
-				Name:    displayName,
-				Ext:     ext,
-				Url:     fmt.Sprintf("/diagrams/%s/%s", projectID, urlPathEscape(name)),
-				AddedBy: "PDMS",
-				AddedAt: "",
-				Source:  "diagrams",
-			})
 		}
 	}
 
@@ -771,19 +1102,29 @@ func ListProjectDocuments(c *gin.Context) {
 		return
 	}
 	adminDocs := []ProjectDocument{}
-	for _, d := range docsByPrj[projectID] {
-		adminDocs = append(adminDocs, ProjectDocument{
-			ID:      d.ID,
-			Name:    d.Name,
-			Ext:     d.Ext,
-			Url:     fmt.Sprintf("/project-files/%s/%s", projectID, urlPathEscape(d.File)),
-			AddedBy: d.AddedBy,
-			AddedAt: d.AddedAt,
-			Source:  "admin",
-		})
+	if scope == "all" || scope == "admin" {
+		for _, d := range docsByPrj[projectID] {
+			adminDocs = append(adminDocs, ProjectDocument{
+				ID:      d.ID,
+				Name:    d.Name,
+				Ext:     d.Ext,
+				Url:     fmt.Sprintf("/project-files/%s/%s", projectID, urlPathEscape(d.File)),
+				AddedBy: d.AddedBy,
+				AddedAt: d.AddedAt,
+				Source:  "admin",
+			})
+		}
 	}
 
-	out := append(diagramsDocs, adminDocs...)
+	var out []ProjectDocument
+	switch scope {
+	case "diagrams":
+		out = diagramsDocs
+	case "admin":
+		out = adminDocs
+	default:
+		out = append(diagramsDocs, adminDocs...)
+	}
 	c.JSON(http.StatusOK, out)
 }
 

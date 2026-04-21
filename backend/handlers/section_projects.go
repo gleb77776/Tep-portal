@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -85,7 +86,7 @@ func findSiteSectionProjectsBySlug(slug string) (*SiteSection, error) {
 	return nil, os.ErrNotExist
 }
 
-// Расширенные типы: офис + изображения/PID (png, pdf и т.д.)
+
 func allowedSectionProjectDocExt(ext string) bool {
 	switch strings.ToLower(ext) {
 	case "pdf", "xls", "xlsx", "doc", "docx", "png", "jpg", "jpeg", "gif", "webp", "bmp", "svg", "dwg", "dxf":
@@ -95,7 +96,7 @@ func allowedSectionProjectDocExt(ext string) bool {
 	}
 }
 
-// InitEmptySectionProjectsStorage — создать пустое хранилище при добавлении раздела.
+
 func InitEmptySectionProjectsStorage(sectionID string) error {
 	sectionProjectsMu.Lock()
 	defer sectionProjectsMu.Unlock()
@@ -113,7 +114,7 @@ func RemoveSectionProjectsStorage(sectionID string) error {
 	return os.RemoveAll(getSectionProjectsDir(sectionID))
 }
 
-// GET /api/v1/site-sections/scoped/:slug/projects — публичный список проектов раздела.
+
 func ListScopedProjects(c *gin.Context) {
 	slug := strings.TrimSpace(c.Param("slug"))
 	sec, err := findSiteSectionProjectsBySlug(slug)
@@ -134,14 +135,56 @@ func ListScopedProjects(c *gin.Context) {
 			out = append(out, p)
 		}
 	}
-	sortProjects(out)
 	c.JSON(http.StatusOK, out)
 }
 
-// GET /api/v1/site-sections/scoped/:slug/projects/:projectId/documents
+// GET /api/v1/site-sections/scoped/:slug/projects/:projectId — один проект раздела.
+func GetScopedProject(c *gin.Context) {
+	slug := strings.TrimSpace(c.Param("slug"))
+	projectID := strings.TrimSpace(c.Param("projectId"))
+	if projectID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid project id"})
+		return
+	}
+	sec, err := findSiteSectionProjectsBySlug(slug)
+	if err != nil || sec == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "section not found"})
+		return
+	}
+	sectionProjectsMu.RLock()
+	defer sectionProjectsMu.RUnlock()
+	st, err := loadSectionProjectsStorage(sec.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	for i := range st.Projects {
+		if st.Projects[i].ID == projectID {
+			if !projectVisible(st.Projects[i]) {
+				c.JSON(http.StatusNotFound, gin.H{"error": "project not found"})
+				return
+			}
+			c.JSON(http.StatusOK, st.Projects[i])
+			return
+		}
+	}
+	c.JSON(http.StatusNotFound, gin.H{"error": "project not found"})
+}
+
+// GET /api/v1/site-sections/scoped/:slug/projects/:projectId/documents?scope=all|admin|diagrams
 func ListScopedProjectDocuments(c *gin.Context) {
 	slug := strings.TrimSpace(c.Param("slug"))
 	projectID := strings.TrimSpace(c.Param("projectId"))
+	scope := strings.TrimSpace(strings.ToLower(c.Query("scope")))
+	if scope == "" {
+		scope = "all"
+	}
+	switch scope {
+	case "all", "admin", "diagrams":
+	default:
+		scope = "all"
+	}
+
 	sec, err := findSiteSectionProjectsBySlug(slug)
 	if err != nil || sec == nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "section not found"})
@@ -163,6 +206,11 @@ func ListScopedProjectDocuments(c *gin.Context) {
 	}
 	if proj == nil || !projectVisible(*proj) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "project not found"})
+		return
+	}
+	// В архивном разделе нет каталога PDMS — список «диаграмм» всегда пустой (флаг только скрывает пункт в UI).
+	if scope == "diagrams" {
+		c.JSON(http.StatusOK, []ProjectDocument{})
 		return
 	}
 	list := st.DocsByProject[projectID]
@@ -196,8 +244,60 @@ func ListAdminScopedProjects(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	sortProjects(st.Projects)
 	c.JSON(http.StatusOK, st.Projects)
+}
+
+// POST /api/v1/admin/site-sections/scoped/:slug/projects/reorder — тело { "ids": [...] }.
+func ReorderScopedProjects(c *gin.Context) {
+	slug := strings.TrimSpace(c.Param("slug"))
+	var req struct {
+		IDs []string `json:"ids"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil || len(req.IDs) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ids required"})
+		return
+	}
+	sec, err := findSiteSectionProjectsBySlug(slug)
+	if err != nil || sec == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "section not found"})
+		return
+	}
+	rank := make(map[string]int, len(req.IDs))
+	for i, id := range req.IDs {
+		id = strings.TrimSpace(id)
+		if id == "" {
+			continue
+		}
+		if _, ok := rank[id]; !ok {
+			rank[id] = i
+		}
+	}
+	sectionProjectsMu.Lock()
+	defer sectionProjectsMu.Unlock()
+	st, err := loadSectionProjectsStorage(sec.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	sort.SliceStable(st.Projects, func(i, j int) bool {
+		ri, okI := rank[st.Projects[i].ID]
+		rj, okJ := rank[st.Projects[j].ID]
+		switch {
+		case okI && okJ:
+			return ri < rj
+		case okI && !okJ:
+			return true
+		case !okI && okJ:
+			return false
+		default:
+			return strings.ToLower(st.Projects[i].Title) < strings.ToLower(st.Projects[j].Title)
+		}
+	})
+	if err := saveSectionProjectsStorage(sec.ID, st); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
 // POST /api/v1/admin/site-sections/scoped/:slug/projects
@@ -209,13 +309,19 @@ func CreateAdminScopedProject(c *gin.Context) {
 		return
 	}
 	var req struct {
-		Title string `json:"title"`
+		Title           string `json:"title"`
+		FolderLink      string `json:"folderLink"`
+		DiagramsEnabled *bool  `json:"diagramsEnabled"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid body"})
 		return
 	}
 	if err := validateProjectTitle(req.Title); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := validateFolderLink(strings.TrimSpace(req.FolderLink)); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -226,13 +332,19 @@ func CreateAdminScopedProject(c *gin.Context) {
 	}
 	author := getCurrentADFullName(c)
 	now := time.Now().UTC().Format(time.RFC3339)
+	diagOff := false
 	item := AdminProject{
-		ID:        id,
-		Title:     strings.TrimSpace(req.Title),
-		Visible:   true,
-		Author:    author,
-		CreatedAt: now,
-		Source:    "admin",
+		ID:              id,
+		Title:           strings.TrimSpace(req.Title),
+		Visible:         true,
+		Author:          author,
+		CreatedAt:       now,
+		Source:          "admin",
+		FolderLink:      strings.TrimSpace(req.FolderLink),
+		DiagramsEnabled: &diagOff,
+	}
+	if req.DiagramsEnabled != nil {
+		item.DiagramsEnabled = req.DiagramsEnabled
 	}
 	sectionProjectsMu.Lock()
 	defer sectionProjectsMu.Unlock()
@@ -253,6 +365,56 @@ func CreateAdminScopedProject(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, item)
+}
+
+// PUT /api/v1/admin/site-sections/scoped/:slug/projects/:id/settings
+func UpdateScopedProjectSettings(c *gin.Context) {
+	slug := strings.TrimSpace(c.Param("slug"))
+	projectID := strings.TrimSpace(c.Param("id"))
+	sec, err := findSiteSectionProjectsBySlug(slug)
+	if err != nil || sec == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "section not found"})
+		return
+	}
+	var req struct {
+		FolderLink      string `json:"folderLink"`
+		DiagramsEnabled *bool  `json:"diagramsEnabled"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid body"})
+		return
+	}
+	if err := validateFolderLink(strings.TrimSpace(req.FolderLink)); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	sectionProjectsMu.Lock()
+	defer sectionProjectsMu.Unlock()
+	st, err := loadSectionProjectsStorage(sec.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	found := false
+	for i := range st.Projects {
+		if st.Projects[i].ID == projectID {
+			st.Projects[i].FolderLink = strings.TrimSpace(req.FolderLink)
+			if req.DiagramsEnabled != nil {
+				st.Projects[i].DiagramsEnabled = req.DiagramsEnabled
+			}
+			found = true
+			break
+		}
+	}
+	if !found {
+		c.JSON(http.StatusNotFound, gin.H{"error": "project not found"})
+		return
+	}
+	if err := saveSectionProjectsStorage(sec.ID, st); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
 // GET /api/v1/admin/site-sections/scoped/:slug/projects/:id/files

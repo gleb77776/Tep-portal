@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import './App.css';
 import LeftSidebar from './components/LeftSidebar';
@@ -9,7 +9,7 @@ import SettingsPage, { getStoredTheme } from './components/SettingsPage';
 import HomePage from './components/HomePage';
 import AllSectionsPage from './components/AllSectionsPage';
 import ProjectsPage from './components/ProjectsPage';
-import ProjectPage from './components/ProjectPage';
+import ProjectDocumentsPage from './components/ProjectDocumentsPage';
 import PlaceholderPage from './pages/PlaceholderPage';
 import SMKPage from './pages/SMKPage';
 import OhsPage from './pages/OhsPage';
@@ -30,7 +30,6 @@ import AdminTrainingPage from './pages/AdminTrainingPage';
 import AdminSectionLinkPage from './pages/AdminSectionLinkPage';
 import LicensesPage from './pages/LicensesPage';
 import DynamicSectionPage from './pages/DynamicSectionPage';
-import SectionProjectPage from './components/SectionProjectPage';
 import AdminSiteSectionsPage from './pages/AdminSiteSectionsPage';
 import AdminDynamicDocsPage from './pages/AdminDynamicDocsPage';
 import AdminSectionMenuPage from './pages/AdminSectionMenuPage';
@@ -45,7 +44,7 @@ import {
   GUEST_USER_PLACEHOLDER,
   isGuestProjectRoute,
 } from './utils/guestProjectAccess';
-import { adminApiUrl } from './backendUrl';
+import { adminApiUrl, backendUrl } from './backendUrl';
 import { adminPanelAllowed } from './utils/adminRoleAccess';
 
 class ErrorBoundary extends React.Component {
@@ -96,97 +95,153 @@ function App() {
     return t;
   });
 
-  useEffect(() => {
-    let blobUrlToRevoke = null;
+  const prevGuestNavRef = useRef(null);
+  const avatarBlobRef = useRef(null);
 
-    const fetchUserData = async () => {
-      try {
-        const storedUsername = localStorage.getItem('ad_username') || '';
+  const applyAdminAccessInfo = useCallback((info) => {
+    const obj = info && typeof info === 'object' && !info.error ? info : null;
+    const can = adminPanelAllowed(obj);
+    setAdminAccess(obj);
+    setCanAccessAdmin(can);
+    if (can) localStorage.setItem('admin_token', 'ad-session');
+    else localStorage.removeItem('admin_token');
+  }, []);
 
-        // Если пользователь уже вводил логин/пароль, backend отдадим по username,
-        // чтобы не просить пароль повторно.
-        const meUrl = storedUsername
-          ? `/api/v1/user/me?username=${encodeURIComponent(storedUsername)}`
-          : '/api/v1/user/me';
+  const loadIdentityRef = useRef(async () => {});
 
-        const res = await fetch(meUrl, { credentials: 'include' });
+  loadIdentityRef.current = async () => {
+    const path = location.pathname;
+    const guest = isGuestProjectRoute(path);
 
-        if (res.status === 401) {
-          if (isGuestProjectRoute(location.pathname)) {
-            setNeedsAdLogin(false);
-            setUserData({ ...GUEST_USER_PLACEHOLDER });
-            setLoginError('');
-            const initials = 'Г';
-            const svg = `<svg width="80" height="80" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg"><rect width="80" height="80" rx="40" fill="#4aa8d8"/><text x="50%" y="50%" text-anchor="middle" dy="0.3em" font-family="Arial, sans-serif" font-size="32" font-weight="bold" fill="white">${initials}</text></svg>`;
-            const svgUrl = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }));
-            blobUrlToRevoke = svgUrl;
-            setPhotoUrl(svgUrl);
-            return;
-          }
-          setNeedsAdLogin(true);
-          const fallbackUser = {
-            fullName: 'Пользователь',
-            username: '',
-            email: '',
-            department: '',
-            photo: null,
-          };
-          setUserData(fallbackUser);
-          setLoginError('');
-          return;
-        }
+    if (guest) {
+      setNeedsAdLogin(false);
+      setUserData({ ...GUEST_USER_PLACEHOLDER });
+      setLoginError('');
+      const initials = 'Г';
+      const svg = `<svg width="80" height="80" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg"><rect width="80" height="80" rx="40" fill="#4aa8d8"/><text x="50%" y="50%" text-anchor="middle" dy="0.3em" font-family="Arial, sans-serif" font-size="32" font-weight="bold" fill="white">${initials}</text></svg>`;
+      const svgUrl = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }));
+      if (avatarBlobRef.current) URL.revokeObjectURL(avatarBlobRef.current);
+      avatarBlobRef.current = svgUrl;
+      setPhotoUrl(svgUrl);
+      setAdminAccess(null);
+      setCanAccessAdmin(false);
+      setAdminAccessReady(true);
+      return;
+    }
 
-        if (!res.ok) throw new Error('Ошибка загрузки пользователя');
-        const data = await parseJsonResponse(res);
-        // Логин для прав /access и ролей: иногда AD не отдаёт username в JSON — берём из запроса ?username= / localStorage.
-        const resolvedUsername = String(
-          data.username || data.userName || data.UserName || storedUsername || ''
-        ).trim();
-        const current = {
-          fullName: data.fullName || data.username || resolvedUsername || 'Пользователь',
-          username: resolvedUsername,
-          email: data.email || '',
-          department: data.department || data.dept || '',
-          photo: data.photo || null,
-        };
-        setUserData(current);
-        if (data.photo) {
-          setPhotoUrl(data.photo);
-        } else {
-          const initials =
-            (current.fullName || '?')
-              .split(' ')
-              .map((n) => n[0])
-              .join('')
-              .toUpperCase()
-              .substring(0, 2) || '?';
-          const svg = `<svg width="80" height="80" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg"><rect width="80" height="80" rx="40" fill="#4aa8d8"/><text x="50%" y="50%" text-anchor="middle" dy="0.3em" font-family="Arial, sans-serif" font-size="32" font-weight="bold" fill="white">${initials}</text></svg>`;
-          const svgUrl = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }));
-          blobUrlToRevoke = svgUrl;
-          setPhotoUrl(svgUrl);
-        }
-      } catch (err) {
-        if (isGuestProjectRoute(location.pathname)) {
-          setNeedsAdLogin(false);
-          setUserData({ ...GUEST_USER_PLACEHOLDER });
-        } else {
-          setNeedsAdLogin(true);
+    setAdminAccessReady(false);
+    const storedUsername = localStorage.getItem('ad_username') || '';
+    const mePath = storedUsername
+      ? `/api/v1/user/me?username=${encodeURIComponent(storedUsername)}`
+      : '/api/v1/user/me';
+
+    try {
+      const [meRes, accessRes] = await Promise.all([
+        fetch(backendUrl(mePath), { credentials: 'include' }),
+        fetch(adminApiUrl('/access', storedUsername || undefined), { credentials: 'include' }),
+      ]);
+
+      const accessText = await accessRes.text();
+      let accessJson = null;
+      if (accessRes.ok && accessText) {
+        try {
+          accessJson = JSON.parse(accessText);
+        } catch {
+          accessJson = null;
         }
       }
-    };
+      if (accessJson && accessJson.error) accessJson = null;
 
-    fetchUserData();
-    return () => {
-      if (blobUrlToRevoke) URL.revokeObjectURL(blobUrlToRevoke);
-    };
+      if (meRes.status === 401) {
+        setNeedsAdLogin(true);
+        setUserData({
+          fullName: 'Пользователь',
+          username: '',
+          email: '',
+          department: '',
+          photo: null,
+        });
+        setLoginError('');
+        applyAdminAccessInfo(null);
+        setAdminAccessReady(true);
+        return;
+      }
+
+      if (!meRes.ok) throw new Error('Ошибка загрузки пользователя');
+      const data = await parseJsonResponse(meRes);
+      const resolvedUsername = String(
+        data.username || data.userName || data.UserName || storedUsername || ''
+      ).trim();
+      const current = {
+        fullName: data.fullName || data.username || resolvedUsername || 'Пользователь',
+        username: resolvedUsername,
+        email: data.email || '',
+        department: data.department || data.dept || '',
+        photo: data.photo || null,
+      };
+      setUserData(current);
+      setNeedsAdLogin(false);
+
+      if (data.photo) {
+        if (avatarBlobRef.current) {
+          URL.revokeObjectURL(avatarBlobRef.current);
+          avatarBlobRef.current = null;
+        }
+        setPhotoUrl(data.photo);
+      } else {
+        const initials =
+          (current.fullName || '?')
+            .split(' ')
+            .map((n) => n[0])
+            .join('')
+            .toUpperCase()
+            .substring(0, 2) || '?';
+        const svg = `<svg width="80" height="80" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg"><rect width="80" height="80" rx="40" fill="#4aa8d8"/><text x="50%" y="50%" text-anchor="middle" dy="0.3em" font-family="Arial, sans-serif" font-size="32" font-weight="bold" fill="white">${initials}</text></svg>`;
+        const svgUrl = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }));
+        if (avatarBlobRef.current) URL.revokeObjectURL(avatarBlobRef.current);
+        avatarBlobRef.current = svgUrl;
+        setPhotoUrl(svgUrl);
+      }
+
+      applyAdminAccessInfo(accessJson);
+    } catch (err) {
+      if (isGuestProjectRoute(location.pathname)) {
+        setNeedsAdLogin(false);
+        setUserData({ ...GUEST_USER_PLACEHOLDER });
+      } else {
+        setNeedsAdLogin(true);
+      }
+      applyAdminAccessInfo(null);
+    } finally {
+      setAdminAccessReady(true);
+    }
+  };
+
+  useEffect(() => {
+    const guest = isGuestProjectRoute(location.pathname);
+    if (prevGuestNavRef.current === null) {
+      prevGuestNavRef.current = guest;
+      void loadIdentityRef.current();
+      return;
+    }
+    if (prevGuestNavRef.current !== guest) {
+      prevGuestNavRef.current = guest;
+      void loadIdentityRef.current();
+    }
   }, [location.pathname]);
+
+  useEffect(() => {
+    return () => {
+      if (avatarBlobRef.current) URL.revokeObjectURL(avatarBlobRef.current);
+    };
+  }, []);
 
   const handleAdLogin = async (e) => {
     e?.preventDefault?.();
     setLoginLoading(true);
     setLoginError('');
     try {
-      const res = await fetch('/api/v1/user/login', {
+      const res = await fetch(backendUrl('/api/v1/user/login'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: loginUsername, password: loginPassword }),
@@ -211,6 +266,10 @@ function App() {
       setNeedsAdLogin(false);
 
       if (data.photo) {
+        if (avatarBlobRef.current) {
+          URL.revokeObjectURL(avatarBlobRef.current);
+          avatarBlobRef.current = null;
+        }
         setPhotoUrl(data.photo);
       } else {
         const initials = (current.fullName || '?')
@@ -221,10 +280,30 @@ function App() {
           .substring(0, 2) || '?';
         const svg = `<svg width="80" height="80" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg"><rect width="80" height="80" rx="40" fill="#4aa8d8"/><text x="50%" y="50%" text-anchor="middle" dy="0.3em" font-family="Arial, sans-serif" font-size="32" font-weight="bold" fill="white">${initials}</text></svg>`;
         const svgUrl = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }));
+        if (avatarBlobRef.current) URL.revokeObjectURL(avatarBlobRef.current);
+        avatarBlobRef.current = svgUrl;
         setPhotoUrl(svgUrl);
       }
 
       setLoginPassword('');
+
+      try {
+        const accessRes = await fetch(adminApiUrl('/access', current.username), { credentials: 'include' });
+        const text = await accessRes.text();
+        let accessJson = null;
+        if (accessRes.ok && text) {
+          try {
+            accessJson = JSON.parse(text);
+          } catch {
+            accessJson = null;
+          }
+        }
+        if (accessJson?.error) accessJson = null;
+        applyAdminAccessInfo(accessJson);
+      } catch {
+        applyAdminAccessInfo(null);
+      }
+      setAdminAccessReady(true);
     } catch (err) {
       setLoginError(String(err?.message || err));
     } finally {
@@ -235,74 +314,6 @@ function App() {
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
-
-  // Права админки только после /me; username в query явно из userData — иначе бэкенд подставляет AD_DEFAULT_USER / BatyanovskiyGV.
-  useEffect(() => {
-    if (needsAdLogin) {
-      setCanAccessAdmin(false);
-      setAdminAccess(null);
-      setAdminAccessReady(true);
-      localStorage.removeItem('admin_token');
-      return;
-    }
-    if (userData === null) {
-      setAdminAccessReady(false);
-      return;
-    }
-
-    let username = (userData.username || '').trim();
-    if (!username && typeof localStorage !== 'undefined') {
-      try {
-        username = (localStorage.getItem('ad_username') || '').trim();
-      } catch (_) {
-        /* ignore */
-      }
-    }
-    if (!username) {
-      setCanAccessAdmin(false);
-      setAdminAccess(null);
-      setAdminAccessReady(true);
-      localStorage.removeItem('admin_token');
-      return;
-    }
-
-    let cancelled = false;
-    setAdminAccessReady(false);
-    setCanAccessAdmin(false);
-    setAdminAccess(null);
-    localStorage.removeItem('admin_token');
-    fetch(adminApiUrl('/access', username))
-      .then(async (r) => {
-        const text = await r.text();
-        if (!r.ok) return null;
-        try {
-          return text ? JSON.parse(text) : null;
-        } catch {
-          return null;
-        }
-      })
-      .then((info) => {
-        if (cancelled) return;
-        const obj = info && typeof info === 'object' && !info.error ? info : null;
-        const can = adminPanelAllowed(obj);
-        setAdminAccess(obj);
-        setCanAccessAdmin(can);
-        if (can) localStorage.setItem('admin_token', 'ad-session');
-        else localStorage.removeItem('admin_token');
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setAdminAccess(null);
-        setCanAccessAdmin(false);
-        localStorage.removeItem('admin_token');
-      })
-      .finally(() => {
-        if (!cancelled) setAdminAccessReady(true);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [needsAdLogin, userData]);
 
   const adminAccessContextValue = useMemo(
     () => ({ canAccessAdmin, adminAccessReady, adminAccess }),
@@ -352,9 +363,29 @@ function App() {
               <Route path="/projects" element={<ProjectsPage />} />
               <Route
                 path="/projects/:projectId"
+                element={<Navigate to="files" replace />}
+              />
+              <Route
+                path="/projects/:projectId/files"
                 element={
                   <div className="center-content center-content--wide">
-                    <ProjectPage onOpenDocument={setSelectedDocument} />
+                    <ProjectDocumentsPage
+                      onOpenDocument={setSelectedDocument}
+                      scope="admin"
+                      variant="global"
+                    />
+                  </div>
+                }
+              />
+              <Route
+                path="/projects/:projectId/diagrams"
+                element={
+                  <div className="center-content center-content--wide">
+                    <ProjectDocumentsPage
+                      onOpenDocument={setSelectedDocument}
+                      scope="diagrams"
+                      variant="global"
+                    />
                   </div>
                 }
               />
@@ -368,9 +399,29 @@ function App() {
               <Route path="/survey/:id" element={<SurveyTakePage />} />
               <Route
                 path="/s/:slug/project/:projectId"
+                element={<Navigate to="files" replace />}
+              />
+              <Route
+                path="/s/:slug/project/:projectId/files"
                 element={
                   <div className="center-content center-content--wide">
-                    <SectionProjectPage onOpenDocument={setSelectedDocument} />
+                    <ProjectDocumentsPage
+                      onOpenDocument={setSelectedDocument}
+                      scope="admin"
+                      variant="scoped"
+                    />
+                  </div>
+                }
+              />
+              <Route
+                path="/s/:slug/project/:projectId/diagrams"
+                element={
+                  <div className="center-content center-content--wide">
+                    <ProjectDocumentsPage
+                      onOpenDocument={setSelectedDocument}
+                      scope="diagrams"
+                      variant="scoped"
+                    />
                   </div>
                 }
               />

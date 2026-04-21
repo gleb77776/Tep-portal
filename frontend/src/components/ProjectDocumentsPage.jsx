@@ -152,12 +152,13 @@ function ProjectDocumentsPage({ onOpenDocument, scope, variant }) {
       <div className="project-header">
         <h2 className="page-title">{pageHeading}</h2>
         <p className="project-subtitle">{projectTitle}</p>
-        {(showFiles || showDiag) && (
+        {/* На странице «Диаграммы» переключатель не показываем — «Файлы проекта» открываются из списка проектов. */}
+        {scope === 'admin' && (showFiles || showDiag) && (
           <nav className="project-subnav" aria-label="Разделы проекта">
             {showFiles && (
               <Link
                 to={filesPath}
-                className={`project-subnav-link ${scope === 'admin' ? 'project-subnav-link--active' : ''}`}
+                className="project-subnav-link project-subnav-link--active"
               >
                 Файлы проекта
               </Link>
@@ -165,7 +166,7 @@ function ProjectDocumentsPage({ onOpenDocument, scope, variant }) {
             {showDiag && (
               <Link
                 to={diagramsPath}
-                className={`project-subnav-link ${scope === 'diagrams' ? 'project-subnav-link--active' : ''}`}
+                className="project-subnav-link"
               >
                 Диаграммы
               </Link>

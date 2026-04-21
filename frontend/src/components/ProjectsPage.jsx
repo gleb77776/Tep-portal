@@ -109,16 +109,14 @@ function ProjectsPage() {
                   </div>
                   {(showFiles || showDiag) && (
                     <div className="project-item__subnav">
-                      {showFiles && folderHref && (
-                        <a
-                          href={folderHref}
+                      {showFiles && (
+                        <Link
+                          to={`/projects/${project.id}/files`}
                           className="project-sublink"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          title="Открыть папку проекта в проводнике (file:// или сеть)"
+                          title="Файлы проекта на портале"
                         >
                           Файлы проекта
-                        </a>
+                        </Link>
                       )}
                       {showDiag && (
                         <Link to={`/projects/${project.id}/diagrams`} className="project-sublink">

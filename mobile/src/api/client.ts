@@ -51,3 +51,43 @@ export async function fetchUserMe(username: string): Promise<PortalUser> {
   }
   return data;
 }
+
+/** Раздел «Охрана труда, ГО и ЧС» — как `handlers.ListOT` и OhsPage.jsx */
+export type OtFolderEntry = { name: string };
+export type OtFileEntry = { name: string; ext: string };
+
+export type OtListResponse = {
+  path?: string;
+  folders?: OtFolderEntry[];
+  files?: OtFileEntry[];
+  error?: string;
+};
+
+export async function fetchOtList(relPath: string): Promise<OtListResponse> {
+  const p = relPath === '' ? '.' : relPath;
+  const res = await fetch(`${API_BASE_URL}/api/v1/ot/list?path=${encodeURIComponent(p)}`, {
+    headers: { Accept: 'application/json' },
+  });
+  let data: OtListResponse = {};
+  try {
+    data = (await res.json()) as OtListResponse;
+  } catch {
+    return { error: 'Некорректный ответ сервера' };
+  }
+  if (!res.ok) {
+    return { error: typeof data.error === 'string' ? data.error : `Ошибка ${res.status}` };
+  }
+  if (data.error) return data;
+  return {
+    path: data.path ?? p,
+    folders: Array.isArray(data.folders) ? data.folders : [],
+    files: Array.isArray(data.files) ? data.files : [],
+  };
+}
+
+/** Статика `/ot/files/...` — как `buildFileUrl` на сайте (сегменты закодированы). */
+export function buildOtFileDownloadUrl(relPath: string, fileName: string): string {
+  const parts =
+    relPath === '.' || relPath === '' ? [fileName] : [...relPath.split('/').filter(Boolean), fileName];
+  return `${API_BASE_URL}/ot/files/${parts.map((s) => encodeURIComponent(s)).join('/')}`;
+}

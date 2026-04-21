@@ -1,20 +1,12 @@
-import { Alert, Linking, ScrollView, StyleSheet, Text, TouchableOpacity } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTheme } from '../context/ThemeContext';
-import { API_BASE_URL } from '../config';
 import type { RootStackParamList } from '../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Sections'>;
 
-export default function SectionsScreen(_props: Props) {
+export default function SectionsScreen({ navigation }: Props) {
   const { colors } = useTheme();
-
-  function openOhs() {
-    const url = `${API_BASE_URL}/ohs`;
-    Linking.openURL(url).catch(() => {
-      Alert.alert('Раздел', 'Не удалось открыть ссылку');
-    });
-  }
 
   return (
     <ScrollView
@@ -29,7 +21,7 @@ export default function SectionsScreen(_props: Props) {
             borderColor: colors.cardBorder,
           },
         ]}
-        onPress={openOhs}
+        onPress={() => navigation.navigate('Ohs')}
         activeOpacity={0.75}
       >
         <Text style={[styles.rowTitle, { color: colors.text }]}>ГО и ЧС</Text>

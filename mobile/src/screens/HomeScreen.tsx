@@ -15,7 +15,6 @@ import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import LogoHeader from '../components/LogoHeader';
 import { fetchNews, fetchUserMe, type NewsItem, type PortalUser } from '../api/client';
-import { API_BASE_URL } from '../config';
 import { getStoredFullNameOverride, hasIdentityAck } from '../utils/identityAckStorage';
 import { useTheme } from '../context/ThemeContext';
 import type { RootStackParamList } from '../navigation/types';
@@ -95,10 +94,7 @@ export default function HomeScreen({ navigation }: Props) {
   }
 
   function openOhs() {
-    const url = `${API_BASE_URL}/ohs`;
-    Linking.openURL(url).catch(() => {
-      Alert.alert('Раздел', 'Не удалось открыть ссылку');
-    });
+    navigation.navigate('Ohs');
   }
 
   if (loading && !user) {

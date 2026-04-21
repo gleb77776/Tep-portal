@@ -15,6 +15,7 @@ import LoginScreen from './src/screens/LoginScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import SectionsScreen from './src/screens/SectionsScreen';
+import OhsScreen from './src/screens/OhsScreen';
 import IdentityWelcomeScreen from './src/screens/IdentityWelcomeScreen';
 import HomeHeaderMenuButton from './src/components/HomeHeaderMenuButton';
 import type { RootStackParamList } from './src/navigation/types';
@@ -105,6 +106,14 @@ function RootNavigator() {
         />
         <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Настройки' }} />
         <Stack.Screen name="Sections" component={SectionsScreen} options={{ title: 'Разделы' }} />
+        <Stack.Screen
+          name="Ohs"
+          component={OhsScreen}
+          options={{
+            title: 'ОТ, ГО и ЧС',
+            headerBackTitle: 'Назад',
+          }}
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );

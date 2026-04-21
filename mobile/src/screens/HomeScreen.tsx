@@ -111,14 +111,11 @@ export default function HomeScreen({ navigation }: Props) {
         <Row label="Подразделение" value={user?.department ?? '—'} colors={colors} />
         <Row label="Почта" value={user?.email ?? '—'} colors={colors} />
       </View>
-      <Text style={[styles.note, { color: colors.textMuted }]}>
-        Стартовая версия приложения: тот же API, что у веб-портала. Дальше — разделы, новости, проекты.
-      </Text>
       <TouchableOpacity
         style={[styles.linkBtn, { borderColor: colors.cardBorder }]}
-        onPress={() => navigation.navigate('Settings')}
+        onPress={() => navigation.navigate('Sections')}
       >
-        <Text style={[styles.linkBtnText, { color: colors.primary }]}>⚙️ Настройки и тема</Text>
+        <Text style={[styles.linkBtnText, { color: colors.primary }]}>📚 Разделы</Text>
       </TouchableOpacity>
       <TouchableOpacity
         style={[styles.outlineBtn, { borderColor: colors.danger }]}
@@ -162,7 +159,6 @@ const styles = StyleSheet.create({
   row: { marginBottom: 12 },
   label: { fontSize: 12, marginBottom: 4 },
   value: { fontSize: 16 },
-  note: { fontSize: 14, lineHeight: 20, marginBottom: 16 },
   linkBtn: {
     borderWidth: 2,
     borderRadius: 10,

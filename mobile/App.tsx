@@ -14,6 +14,7 @@ import type { ThemeColors, ThemeMode } from './src/theme/colors';
 import LoginScreen from './src/screens/LoginScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
+import SectionsScreen from './src/screens/SectionsScreen';
 import HeaderSettingsButton from './src/components/HeaderSettingsButton';
 import type { RootStackParamList } from './src/navigation/types';
 
@@ -86,6 +87,7 @@ function RootNavigator() {
           })}
         />
         <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Настройки' }} />
+        <Stack.Screen name="Sections" component={SectionsScreen} options={{ title: 'Разделы' }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

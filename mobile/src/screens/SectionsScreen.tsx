@@ -29,13 +29,30 @@ export default function SectionsScreen({ navigation }: Props) {
           Охрана труда, гражданская оборона и чрезвычайные ситуации
         </Text>
       </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[
+          styles.row,
+          {
+            backgroundColor: colors.cardBg,
+            borderColor: colors.cardBorder,
+          },
+        ]}
+        onPress={() => navigation.navigate('Forms')}
+        activeOpacity={0.75}
+      >
+        <Text style={[styles.rowTitle, { color: colors.text }]}>Бланки</Text>
+        <Text style={[styles.rowHint, { color: colors.textMuted }]}>
+          Документы и шаблоны раздела «Бланки» (как на сайте /forms)
+        </Text>
+      </TouchableOpacity>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   scroll: { flex: 1 },
-  inner: { paddingHorizontal: 16, paddingBottom: 32, paddingTop: 8 },
+  inner: { paddingHorizontal: 16, paddingBottom: 32, paddingTop: 8, gap: 12 },
   row: {
     borderRadius: 12,
     borderWidth: 2,

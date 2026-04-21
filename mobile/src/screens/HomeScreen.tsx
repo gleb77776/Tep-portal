@@ -14,6 +14,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import LogoHeader from '../components/LogoHeader';
+import HomeIconsBar from '../components/HomeIconsBar';
 import { fetchNews, fetchUserMe, type NewsItem, type PortalUser } from '../api/client';
 import { getStoredFullNameOverride, hasIdentityAck } from '../utils/identityAckStorage';
 import { useTheme } from '../context/ThemeContext';
@@ -93,10 +94,6 @@ export default function HomeScreen({ navigation }: Props) {
     }
   }
 
-  function openOhs() {
-    navigation.navigate('Ohs');
-  }
-
   if (loading && !user) {
     return (
       <View style={[styles.centered, { backgroundColor: colors.screenBg }]}>
@@ -120,26 +117,12 @@ export default function HomeScreen({ navigation }: Props) {
       }
     >
       <LogoHeader compact fullBleed />
-      <View style={styles.sectionsStrip}>
-        <TouchableOpacity
-          style={[
-            styles.sectionCard,
-            { backgroundColor: colors.logoStripStart },
-          ]}
-          onPress={openOhs}
-          activeOpacity={0.85}
-        >
-          <View
-            style={[
-              styles.sectionIconCircle,
-              { backgroundColor: colors.mode === 'dark' ? colors.cardBg : '#ffffff' },
-            ]}
-          >
-            <Text style={[styles.sectionIconEmoji, { color: colors.primary }]}>📋</Text>
-          </View>
-          <Text style={styles.sectionCardText}>Охрана труда, ГО и ЧС</Text>
-        </TouchableOpacity>
-      </View>
+      <HomeIconsBar
+        colors={colors}
+        onOpenOhs={() => navigation.navigate('Ohs')}
+        onOpenForms={() => navigation.navigate('Forms')}
+        onOpenAll={() => navigation.navigate('Sections')}
+      />
 
       <View style={styles.newsSection}>
         <Text style={[styles.newsSectionTitle, { color: colors.text }]}>Последние новости</Text>
@@ -194,43 +177,8 @@ const styles = StyleSheet.create({
   muted: { marginTop: 12 },
   scroll: { flex: 1 },
   scrollInner: { paddingBottom: 40 },
-  sectionsStrip: {
-    width: '100%',
-    marginTop: 44,
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-  },
-  sectionCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    borderWidth: 0,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.12,
-    shadowRadius: 10,
-    elevation: 3,
-  },
-  sectionIconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sectionIconEmoji: { fontSize: 20 },
-  sectionCardText: {
-    flex: 1,
-    color: '#ffffff',
-    fontWeight: '600',
-    fontSize: 14,
-    lineHeight: 18,
-  },
   newsSection: {
-    marginTop: 8,
+    marginTop: 12,
     paddingHorizontal: 16,
     paddingBottom: 8,
   },

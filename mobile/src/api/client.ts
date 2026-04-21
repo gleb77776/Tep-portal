@@ -91,3 +91,33 @@ export function buildOtFileDownloadUrl(relPath: string, fileName: string): strin
     relPath === '.' || relPath === '' ? [fileName] : [...relPath.split('/').filter(Boolean), fileName];
   return `${API_BASE_URL}/ot/files/${parts.map((s) => encodeURIComponent(s)).join('/')}`;
 }
+
+/** Раздел «Бланки» — тот же контент, что на сайте `/forms`: `handlers.ListForms`, статика `/forms/files/`. */
+export async function fetchFormsList(relPath: string): Promise<OtListResponse> {
+  const p = relPath === '' ? '.' : relPath;
+  const res = await fetch(`${API_BASE_URL}/api/v1/forms/list?path=${encodeURIComponent(p)}`, {
+    headers: { Accept: 'application/json' },
+  });
+  let data: OtListResponse = {};
+  try {
+    data = (await res.json()) as OtListResponse;
+  } catch {
+    return { error: 'Некорректный ответ сервера' };
+  }
+  if (!res.ok) {
+    return { error: typeof data.error === 'string' ? data.error : `Ошибка ${res.status}` };
+  }
+  if (data.error) return data;
+  return {
+    path: data.path ?? p,
+    folders: Array.isArray(data.folders) ? data.folders : [],
+    files: Array.isArray(data.files) ? data.files : [],
+  };
+}
+
+/** Статика `/forms/files/...` — как FormsPage.jsx */
+export function buildFormsFileDownloadUrl(relPath: string, fileName: string): string {
+  const parts =
+    relPath === '.' || relPath === '' ? [fileName] : [...relPath.split('/').filter(Boolean), fileName];
+  return `${API_BASE_URL}/forms/files/${parts.map((s) => encodeURIComponent(s)).join('/')}`;
+}

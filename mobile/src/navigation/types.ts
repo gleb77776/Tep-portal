@@ -6,4 +6,6 @@ export type RootStackParamList = {
   Sections: undefined;
   /** Охрана труда, ГО и ЧС — файлы с бэкенда, как /ohs на сайте */
   Ohs: undefined;
+  /** Бланки — как /forms на сайте */
+  Forms: undefined;
 };

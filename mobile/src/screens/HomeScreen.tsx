@@ -82,11 +82,6 @@ export default function HomeScreen({ navigation }: Props) {
     }
   }
 
-  async function onLogout() {
-    await AsyncStorage.multiRemove([USERNAME_KEY, SNAPSHOT_KEY]);
-    navigation.replace('Login');
-  }
-
   function openOhs() {
     const url = `${API_BASE_URL}/ohs`;
     Linking.openURL(url).catch(() => {
@@ -137,14 +132,6 @@ export default function HomeScreen({ navigation }: Props) {
           <Text style={styles.sectionCardText}>Охрана труда, ГО и ЧС</Text>
         </TouchableOpacity>
       </View>
-      <View style={styles.body}>
-        <TouchableOpacity
-          style={[styles.outlineBtn, { borderColor: colors.danger }]}
-          onPress={onLogout}
-        >
-          <Text style={[styles.outlineText, { color: colors.danger }]}>Выйти</Text>
-        </TouchableOpacity>
-      </View>
     </ScrollView>
   );
 }
@@ -154,7 +141,6 @@ const styles = StyleSheet.create({
   muted: { marginTop: 12 },
   scroll: { flex: 1 },
   scrollInner: { paddingBottom: 40 },
-  body: { paddingHorizontal: 16 },
   sectionsStrip: {
     width: '100%',
     marginTop: 44,
@@ -190,11 +176,4 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 18,
   },
-  outlineBtn: {
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  outlineText: { fontSize: 16, fontWeight: '600' },
 });

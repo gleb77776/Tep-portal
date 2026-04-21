@@ -1,10 +1,30 @@
-import { ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import LogoHeader from '../components/LogoHeader';
 import { useTheme } from '../context/ThemeContext';
+import type { RootStackParamList } from '../navigation/types';
+
+const USERNAME_KEY = 'ad_username';
+const SNAPSHOT_KEY = 'portal_user_snapshot';
 
 export default function SettingsScreen() {
   const { colors, mode, setTheme } = useTheme();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const isDark = mode === 'dark';
+
+  async function onLogout() {
+    await AsyncStorage.multiRemove([USERNAME_KEY, SNAPSHOT_KEY]);
+    navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+  }
+
+  function confirmLogout() {
+    Alert.alert('Выход', 'Выйти из аккаунта?', [
+      { text: 'Отмена', style: 'cancel' },
+      { text: 'Выйти', style: 'destructive', onPress: () => void onLogout() },
+    ]);
+  }
 
   return (
     <ScrollView
@@ -55,6 +75,14 @@ export default function SettingsScreen() {
           </Text>
         </View>
       </View>
+
+      <TouchableOpacity
+        style={[styles.logoutBtn, { borderColor: colors.danger }]}
+        onPress={confirmLogout}
+        activeOpacity={0.85}
+      >
+        <Text style={[styles.logoutText, { color: colors.danger }]}>Выйти</Text>
+      </TouchableOpacity>
     </ScrollView>
   );
 }
@@ -88,4 +116,13 @@ const styles = StyleSheet.create({
   },
   label: { fontSize: 15 },
   hint: { fontSize: 13, lineHeight: 18 },
+  logoutBtn: {
+    marginHorizontal: 16,
+    marginTop: 24,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  logoutText: { fontSize: 16, fontWeight: '600' },
 });

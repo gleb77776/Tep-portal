@@ -16,7 +16,7 @@ import HomeScreen from './src/screens/HomeScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import SectionsScreen from './src/screens/SectionsScreen';
 import IdentityWelcomeScreen from './src/screens/IdentityWelcomeScreen';
-import HeaderSettingsButton from './src/components/HeaderSettingsButton';
+import HomeHeaderMenuButton from './src/components/HomeHeaderMenuButton';
 import type { RootStackParamList } from './src/navigation/types';
 import { hasIdentityAck } from './src/utils/identityAckStorage';
 
@@ -100,7 +100,7 @@ function RootNavigator() {
           component={HomeScreen}
           options={({ navigation }) => ({
             title: 'Портал',
-            headerRight: () => <HeaderSettingsButton navigation={navigation} />,
+            headerRight: () => <HomeHeaderMenuButton navigation={navigation} />,
           })}
         />
         <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Настройки' }} />

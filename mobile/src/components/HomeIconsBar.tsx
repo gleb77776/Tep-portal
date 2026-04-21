@@ -1,5 +1,6 @@
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import type { ThemeColors } from '../theme/colors';
+import { shadowRaised } from '../theme/shadows';
 
 type Props = {
   colors: ThemeColors;
@@ -11,12 +12,20 @@ type Props = {
 
 /** Мобильные разделы: ОТ/ГО/ЧС, Бланки, обучение, все разделы — в одну строку как панель иконок на сайте. */
 export default function HomeIconsBar({ colors, onOpenOhs, onOpenForms, onOpenTraining, onOpenAll }: Props) {
-  const panelBg = colors.mode === 'dark' ? colors.logoStripStart : colors.primary;
-  const circleBg = '#ffffff';
-  const emojiTint = colors.primary;
+  const circleBg = colors.iconsIconCircleBg;
+  const emojiTint = colors.iconsIconGlyph;
 
   return (
-    <View style={[styles.panel, { backgroundColor: panelBg }]}>
+    <View
+      style={[
+        styles.panel,
+        shadowRaised,
+        {
+          backgroundColor: colors.iconsPanelBg,
+          borderColor: colors.mode === 'dark' ? colors.primaryLight : 'rgba(255, 255, 255, 0.14)',
+        },
+      ]}
+    >
       <View style={styles.row}>
         <TouchableOpacity
           style={styles.cell}
@@ -85,11 +94,12 @@ export default function HomeIconsBar({ colors, onOpenOhs, onOpenForms, onOpenTra
 const styles = StyleSheet.create({
   panel: {
     borderRadius: 12,
+    borderWidth: 1,
     paddingVertical: 15,
     paddingHorizontal: 10,
     marginHorizontal: 16,
-    marginTop: 44,
-    marginBottom: 4,
+    marginTop: 12,
+    marginBottom: 12,
   },
   row: {
     flexDirection: 'row',

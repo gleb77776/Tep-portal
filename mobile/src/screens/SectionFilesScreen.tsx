@@ -14,6 +14,7 @@ import { useIsFocused } from '@react-navigation/native';
 import type { OtFileEntry, OtFolderEntry, OtListResponse } from '../api/client';
 import { useTheme } from '../context/ThemeContext';
 import type { ThemeColors } from '../theme/colors';
+import { shadowRow } from '../theme/shadows';
 
 const PREVIEW_EXT = ['pdf', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'];
 
@@ -138,21 +139,31 @@ export default function SectionFilesScreen({ config }: Props) {
     >
       <Text style={[styles.pageTitle, { color: colors.text }]}>{config.pageTitle}</Text>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.breadcrumbScroll}>
-        <View style={styles.breadcrumbRow}>
-          <TouchableOpacity onPress={goRoot} hitSlop={8}>
-            <Text style={[styles.breadcrumbLink, { color: colors.primary }]}>{config.breadcrumbRoot}</Text>
-          </TouchableOpacity>
-          {breadcrumbs.map((seg) => (
-            <View key={seg} style={styles.breadcrumbItem}>
-              <Text style={[styles.breadcrumbSep, { color: colors.textMuted }]}> / </Text>
-              <TouchableOpacity onPress={() => goToCrumb(seg)} hitSlop={8}>
-                <Text style={[styles.breadcrumbLink, { color: colors.primary }]}>{seg}</Text>
-              </TouchableOpacity>
-            </View>
-          ))}
-        </View>
-      </ScrollView>
+      <View
+        style={[
+          styles.breadcrumbPanel,
+          {
+            backgroundColor: colors.sectionTileBg,
+            borderColor: colors.divider,
+          },
+        ]}
+      >
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <View style={styles.breadcrumbRow}>
+            <TouchableOpacity onPress={goRoot} hitSlop={8}>
+              <Text style={[styles.breadcrumbLink, { color: colors.primary }]}>{config.breadcrumbRoot}</Text>
+            </TouchableOpacity>
+            {breadcrumbs.map((seg) => (
+              <View key={seg} style={styles.breadcrumbItem}>
+                <Text style={[styles.breadcrumbSep, { color: colors.textMuted }]}> / </Text>
+                <TouchableOpacity onPress={() => goToCrumb(seg)} hitSlop={8}>
+                  <Text style={[styles.breadcrumbLink, { color: colors.primary }]}>{seg}</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+        </ScrollView>
+      </View>
 
       {loading && !refreshing ? (
         <View style={styles.centerBlock}>
@@ -197,9 +208,15 @@ function FolderRow({
   colors: ThemeColors;
   onPress: () => void;
 }) {
+  const borderCol = colors.mode === 'light' ? colors.divider : colors.cardBorder;
   return (
     <TouchableOpacity
-      style={[styles.row, styles.rowFolder, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}
+      style={[
+        styles.row,
+        styles.rowFolder,
+        shadowRow,
+        { backgroundColor: colors.cardBg, borderColor: borderCol },
+      ]}
       onPress={onPress}
       activeOpacity={0.75}
     >
@@ -207,6 +224,7 @@ function FolderRow({
       <Text style={[styles.rowName, { color: colors.text }]} numberOfLines={2}>
         {name}
       </Text>
+      <Text style={[styles.rowChevron, { color: colors.textMuted }]}>›</Text>
     </TouchableOpacity>
   );
 }
@@ -222,15 +240,20 @@ function FileRow({
   label: string;
   onOpen: () => void;
 }) {
+  const borderCol = colors.mode === 'light' ? colors.divider : colors.cardBorder;
   return (
-    <View style={[styles.row, styles.rowFile, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}>
+    <View style={[styles.row, styles.rowFile, shadowRow, { backgroundColor: colors.cardBg, borderColor: borderCol }]}>
       <Text style={styles.rowIcon}>📄</Text>
       <View style={styles.fileMain}>
         <Text style={[styles.rowName, { color: colors.text }]} numberOfLines={3}>
           {name}
         </Text>
-        <TouchableOpacity onPress={onOpen} style={styles.actionBtn}>
-          <Text style={[styles.actionText, { color: colors.primary }]}>{label}</Text>
+        <TouchableOpacity
+          onPress={onOpen}
+          style={[styles.actionPill, { backgroundColor: colors.buttonPrimary }]}
+          activeOpacity={0.8}
+        >
+          <Text style={[styles.actionPillText, { color: colors.buttonPrimaryText }]}>{label}</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -240,8 +263,14 @@ function FileRow({
 const styles = StyleSheet.create({
   scroll: { flex: 1 },
   scrollInner: { paddingBottom: 32, paddingHorizontal: 16 },
-  pageTitle: { fontSize: 18, fontWeight: '700', lineHeight: 24, marginBottom: 14 },
-  breadcrumbScroll: { marginBottom: 14 },
+  pageTitle: { fontSize: 18, fontWeight: '700', lineHeight: 24, marginBottom: 12 },
+  breadcrumbPanel: {
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginBottom: 14,
+  },
   breadcrumbRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' },
   breadcrumbItem: { flexDirection: 'row', alignItems: 'center' },
   breadcrumbSep: { fontSize: 14 },
@@ -252,17 +281,25 @@ const styles = StyleSheet.create({
   list: { gap: 10 },
   row: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    borderRadius: 12,
-    borderWidth: 2,
-    padding: 14,
+    alignItems: 'center',
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
   },
   rowFolder: { gap: 10 },
-  rowFile: { gap: 10 },
+  rowFile: { gap: 10, alignItems: 'flex-start' },
   rowIcon: { fontSize: 22, lineHeight: 26 },
+  rowChevron: { fontSize: 22, fontWeight: '300', marginLeft: 4 },
   rowName: { flex: 1, fontSize: 15, fontWeight: '600' },
   fileMain: { flex: 1, minWidth: 0 },
-  actionBtn: { alignSelf: 'flex-start', marginTop: 10, paddingVertical: 4 },
-  actionText: { fontSize: 14, fontWeight: '600' },
+  actionPill: {
+    alignSelf: 'flex-start',
+    marginTop: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  actionPillText: { fontSize: 13, fontWeight: '600' },
   empty: { fontSize: 14, lineHeight: 20, marginTop: 8 },
 });

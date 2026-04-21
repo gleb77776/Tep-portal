@@ -26,6 +26,14 @@ export type ThemeColors = {
   switchTrackOn: string;
   switchThumb: string;
   settingsHeaderBg: string;
+  /** Панель иконок на главной — как `.icons-panel` / `[data-theme="dark"] .icons-panel` */
+  iconsPanelBg: string;
+  iconsIconCircleBg: string;
+  iconsIconGlyph: string;
+  /** Карточки сетки разделов — как `.section-card` */
+  sectionTileBg: string;
+  /** Разделители и тонкие границы — как `#eee` / `#e0e0e0` */
+  divider: string;
 };
 
 export const lightColors: ThemeColors = {
@@ -52,6 +60,11 @@ export const lightColors: ThemeColors = {
   switchTrackOn: '#1e5cb0',
   switchThumb: '#ffffff',
   settingsHeaderBg: '#f5f9ff',
+  iconsPanelBg: '#1e5cb0',
+  iconsIconCircleBg: '#ffffff',
+  iconsIconGlyph: '#1e5cb0',
+  sectionTileBg: '#f9fbff',
+  divider: '#e0e0e0',
 };
 
 export const darkColors: ThemeColors = {
@@ -78,4 +91,9 @@ export const darkColors: ThemeColors = {
   switchTrackOn: '#5a9bd5',
   switchThumb: '#e0e4e8',
   settingsHeaderBg: '#2d333d',
+  iconsPanelBg: '#252a33',
+  iconsIconCircleBg: '#3d4553',
+  iconsIconGlyph: '#8ab4f8',
+  sectionTileBg: '#252a33',
+  divider: '#3d4553',
 };

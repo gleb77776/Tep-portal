@@ -134,6 +134,15 @@ function HomePage() {
           </div>
         </div>
 
+        <div className="home-mobile-ot-section" role="navigation" aria-label="Охрана труда, ГО и ЧС">
+          <Link to="/ohs" className="home-mobile-ot-card">
+            <span className="home-mobile-ot-icon" aria-hidden="true">
+              📋
+            </span>
+            <span className="home-mobile-ot-text">Охрана труда, ГО и ЧС</span>
+          </Link>
+        </div>
+
         <div className="news-section home-news-section">
           <div className="news-header">
             <h3 className="news-title">Последние новости</h3>

@@ -8,6 +8,25 @@ export type PortalUser = {
   department?: string;
 };
 
+/** Как `handlers.NewsItem` и главная сайта */
+export type NewsItem = {
+  id: number;
+  icon: string;
+  title: string;
+  date: string;
+  badge?: string | null;
+};
+
+/** Публичный список новостей (тот же источник, что и веб `/api/v1/news`). */
+export async function fetchNews(): Promise<NewsItem[]> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/news`, {
+    headers: { Accept: 'application/json' },
+  });
+  if (!res.ok) return [];
+  const data = (await res.json().catch(() => null)) as unknown;
+  return Array.isArray(data) ? (data as NewsItem[]) : [];
+}
+
 export async function loginAd(username: string, password: string): Promise<PortalUser> {
   const res = await fetch(`${API_BASE_URL}/api/v1/user/login`, {
     method: 'POST',

@@ -29,6 +29,7 @@ function AdminProjectsPage() {
   const [pendingUploads, setPendingUploads] = useState([]);
 
   const [folderLink, setFolderLink] = useState('');
+  const [diagramsFolderId, setDiagramsFolderId] = useState('');
   const [diagramsEnabled, setDiagramsEnabled] = useState(true);
 
   const [loading, setLoading] = useState(true);
@@ -41,10 +42,12 @@ function AdminProjectsPage() {
   const settingsDirty = useMemo(() => {
     if (!selectedProject) return false;
     const sameFolder = folderLink.trim() === String(selectedProject.folderLink || '').trim();
+    const sameDiagFolder =
+      diagramsFolderId.trim() === String(selectedProject.diagramsFolderId || '').trim();
     const serverDiag = selectedProject.diagramsEnabled !== false;
     const sameDiag = diagramsEnabled === serverDiag;
-    return !sameFolder || !sameDiag;
-  }, [selectedProject, folderLink, diagramsEnabled]);
+    return !sameFolder || !sameDiagFolder || !sameDiag;
+  }, [selectedProject, folderLink, diagramsFolderId, diagramsEnabled]);
 
   const isDirty =
     pendingCreates.length > 0 || pendingUploads.length > 0 || settingsDirty;
@@ -108,9 +111,11 @@ function AdminProjectsPage() {
   useEffect(() => {
     if (selectedProject) {
       setFolderLink(selectedProject.folderLink || '');
+      setDiagramsFolderId(selectedProject.diagramsFolderId || '');
       setDiagramsEnabled(selectedProject.diagramsEnabled !== false);
     } else {
       setFolderLink('');
+      setDiagramsFolderId('');
       setDiagramsEnabled(true);
     }
   }, [selectedProject]);
@@ -191,6 +196,7 @@ function AdminProjectsPage() {
           headers: { 'Content-Type': 'application/json', ...authHeaders },
           body: JSON.stringify({
             folderLink: folderLink.trim(),
+            diagramsFolderId: diagramsFolderId.trim(),
             diagramsEnabled,
           }),
         });
@@ -440,6 +446,22 @@ function AdminProjectsPage() {
                     disabled={saving}
                     autoComplete="off"
                   />
+                  <label className="admin-projects-settings__label admin-form-label">
+                    Папка диаграмм PDMS на сервере (если не совпадает с id проекта)
+                  </label>
+                  <input
+                    type="text"
+                    className="admin-form-input admin-projects-settings__input"
+                    value={diagramsFolderId}
+                    onChange={(e) => setDiagramsFolderId(e.target.value)}
+                    placeholder="Например: 141N50_Svobodnenskaya для проекта 141"
+                    disabled={saving}
+                    autoComplete="off"
+                  />
+                  <p className="admin-form-hint" style={{ marginTop: 4, marginBottom: 12 }}>
+                    Совпадает с именем подпапки в data/diagrams (выгрузка из PDMS). Оставьте пустым, если id проекта
+                    совпадает с именем папки.
+                  </p>
                   <label className="admin-projects-settings__checkbox-label admin-form-label">
                     <input
                       type="checkbox"

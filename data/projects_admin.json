@@ -1,9 +1,200 @@
 {
+  "order": [
+    "274",
+    "141",
+    "144N70_ARM",
+    "254",
+    "271",
+    "181M1D_KIG",
+    "136R1_NKM",
+    "252",
+    "250------------------3",
+    "132N32_SGR",
+    "246N1_SGT",
+    "21-------25",
+    "22-------26",
+    "261N1_UYK",
+    "68N115_TUY",
+    "141N50_Svobodnenskaya",
+    "68N115_YAC",
+    "68N1_YAK",
+    "141N4_AMR",
+    "_141N4_AMR",
+    "_68N115_TUY"
+  ],
   "projects": [
+    {
+      "id": "274",
+      "title": "274 | Забайкальская ТЭС",
+      "visible": true,
+      "author": "Батяновский Глеб Вадимович",
+      "createdAt": "2026-04-21T08:03:34Z",
+      "source": "admin",
+      "folderLink": "file://tepmfs22.tep-m.ru/Objects/274",
+      "diagramsEnabled": false
+    },
+    {
+      "id": "141",
+      "title": "141 | Свободненская ТЭС",
+      "visible": true,
+      "author": "Батяновский Глеб Вадимович",
+      "createdAt": "2026-04-21T08:42:50Z",
+      "source": "admin",
+      "folderLink": "file://tepmfs22.tep-m.ru/Objects/141",
+      "diagramsEnabled": true,
+      "diagramsFolderId": "141N50_Svobodnenskaya"
+    },
+    {
+      "id": "144N70_ARM",
+      "title": "144 | Артёмовская ТЭЦ",
+      "visible": true,
+      "source": "diagrams",
+      "folderLink": "file://tepmfs22.tep-m.ru/Objects/141",
+      "diagramsEnabled": true
+    },
+    {
+      "id": "254",
+      "title": "254 | Балтийский ГХК",
+      "visible": true,
+      "author": "Батяновский Глеб Вадимович",
+      "createdAt": "2026-04-21T08:05:01Z",
+      "source": "admin",
+      "folderLink": "file://tepmfs22.tep-m.ru/Objects/254",
+      "diagramsEnabled": false
+    },
+    {
+      "id": "271",
+      "title": "​271 | Динская ТЭС",
+      "visible": true,
+      "author": "Батяновский Глеб Вадимович",
+      "createdAt": "2026-04-21T08:05:43Z",
+      "source": "admin",
+      "folderLink": "file://tepmfs22.tep-m.ru/Objects/271",
+      "diagramsEnabled": false
+    },
+    {
+      "id": "181M1D_KIG",
+      "title": "181 | Киришская ГРЭС",
+      "visible": true,
+      "source": "diagrams",
+      "folderLink": "file://tepmfs22.tep-m.ru/Objects/181",
+      "diagramsEnabled": true
+    },
+    {
+      "id": "136R1_NKM",
+      "title": "136 | Нижнекамская ТЭЦ",
+      "visible": true,
+      "source": "diagrams",
+      "folderLink": "file://tepmfs22.tep-m.ru/Objects/136",
+      "diagramsEnabled": false
+    },
+    {
+      "id": "252",
+      "title": "​252 | Новочеркасская ГРЭС",
+      "visible": true,
+      "author": "Батяновский Глеб Вадимович",
+      "createdAt": "2026-04-21T08:07:40Z",
+      "source": "admin",
+      "folderLink": "file://tepmfs22.tep-m.ru/Objects/252",
+      "diagramsEnabled": false
+    },
+    {
+      "id": "250------------------3",
+      "title": "​250 | Норильская ТЭЦ-3",
+      "visible": true,
+      "author": "Батяновский Глеб Вадимович",
+      "createdAt": "2026-04-21T08:08:18Z",
+      "source": "admin",
+      "folderLink": "file://tepmfs22.tep-m.ru/Objects/250",
+      "diagramsEnabled": false
+    },
+    {
+      "id": "132N32_SGR",
+      "title": "132 | Сахалинская ГРЭС-2",
+      "visible": true,
+      "source": "diagrams",
+      "folderLink": "file://tepmfs22.tep-m.ru/Objects/132",
+      "diagramsEnabled": false
+    },
+    {
+      "id": "246N1_SGT",
+      "title": "246 | Сургутская ГРЭС-1",
+      "visible": true,
+      "source": "diagrams",
+      "folderLink": "file://tepmfs22.tep-m.ru/Objects/246",
+      "diagramsEnabled": true
+    },
+    {
+      "id": "21-------25",
+      "title": "​21 | ТЭЦ-25",
+      "visible": true,
+      "author": "Батяновский Глеб Вадимович",
+      "createdAt": "2026-04-21T08:09:05Z",
+      "source": "admin",
+      "folderLink": "file://tepmfs22.tep-m.ru/Objects/21",
+      "diagramsEnabled": false
+    },
+    {
+      "id": "22-------26",
+      "title": "​22 | ТЭЦ-26",
+      "visible": true,
+      "author": "Батяновский Глеб Вадимович",
+      "createdAt": "2026-04-21T08:09:17Z",
+      "source": "admin",
+      "folderLink": "file://tepmfs22.tep-m.ru/Objects/22",
+      "diagramsEnabled": false
+    },
+    {
+      "id": "261N1_UYK",
+      "title": "261 | Южно-Якутская ТЭС",
+      "visible": true,
+      "source": "diagrams",
+      "folderLink": "file://tepmfs22.tep-m.ru/Objects/261",
+      "diagramsEnabled": true
+    },
+    {
+      "id": "68N115_TUY",
+      "title": "68 | Якутская ГРЭС-2",
+      "visible": true,
+      "source": "diagrams",
+      "folderLink": "file://tepmfs22.tep-m.ru/Objects/68",
+      "diagramsEnabled": true
+    },
     {
       "id": "141N50_Svobodnenskaya",
       "title": "141N50_Svobodnenskaya",
-      "visible": true,
+      "visible": false,
+      "source": "diagrams",
+      "diagramsEnabled": false
+    },
+    {
+      "id": "68N115_YAC",
+      "title": "68N115_YAC",
+      "visible": false,
+      "source": "diagrams"
+    },
+    {
+      "id": "68N1_YAK",
+      "title": "68N1_YAK",
+      "visible": false,
+      "source": "diagrams"
+    },
+    {
+      "id": "141N4_AMR",
+      "title": "141N4_AMR",
+      "visible": false,
+      "source": "diagrams"
+    },
+    {
+      "id": "_141N4_AMR",
+      "title": "_141N4_AMR",
+      "visible": false,
+      "source": "diagrams"
+    },
+    {
+      "id": "_68N115_TUY",
+      "title": "_68N115_TUY",
+      "visible": false,
       "source": "diagrams"
     }
   ]

@@ -6,6 +6,10 @@
   --local, -l  — только копирование в data/diagrams (без SharePoint, для localhost)
   nd           — не удалять файлы перед загрузкой (no delete)
   --sync-titles — только обновить diagram_titles.json из DIAGRAMSLIST.log для уже лежащих PDF (без SharePoint)
+
+Подпапка проекта в data/diagrams выбирается по номеру из названия (ведущие цифры / 261N1 и т.д.),
+чтобы не плодить дубликаты при разных языках названия в логе PDMS. Дата выгрузки на портал
+пишется в diagram_pdms_at.json и показывается в списке диаграмм.
 """
 
 import os
@@ -21,14 +25,14 @@ import time
 import subprocess
 from urllib.parse import quote
 from requests_ntlm import HttpNtlmAuth
-from datetime import datetime
+from datetime import datetime, timezone
 
 # Импорт конфига (создайте config.py из config.example.py)
 try:
     from config import USERNAME, PASSWORD, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
 except ImportError:
-    USERNAME = os.environ.get("DIAGRAMS_USERNAME", r"tep-m.ru\BatyanovskiyGV")
-    PASSWORD = os.environ.get("DIAGRAMS_PASSWORD", "VLrx5siGo4")
+    USERNAME = os.environ.get("DIAGRAMS_USERNAME", "")
+    PASSWORD = os.environ.get("DIAGRAMS_PASSWORD", "")
     TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
     TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
 
@@ -50,6 +54,11 @@ PROJECTS_BASE_PATH = r"\\tepmsp11\Projects"
 NEW_PORTAL_DIAGRAMS_PATH = os.path.join(PROJECT_ROOT, "data", "diagrams")
 
 PID_DIR_NAME = "PID схемы"
+
+DIAGRAM_PDMS_AT_FILENAME = "diagram_pdms_at.json"
+
+# Чтобы не заспамливать лог при --sync-titles (много строк с одним проектом)
+_warned_ambiguous_folder_keys = set()
 
 FULL_LOG_NAME = rf"\\tep-m.ru\data\App\PDMS\PDMS_TEP\LOG\DIAGRAMSLIST_{datetime.now():%d.%m.%y}.log"
 DEBUG_LOG_NAME = rf"\\tep-m.ru\data\App\PDMS\PDMS_TEP\LOG\DIAGRAMSLIST_DEBUG_{datetime.now():%d.%m.%y}.log"
@@ -132,8 +141,106 @@ def portal_diagrams_subdir(project_name_from_log):
     return re.sub(r"[^\w\-]", "_", canonical_portal_folder_name(project_name_from_log))
 
 
-def sharepoint_project_folder(project_name_from_log):
-    return canonical_portal_folder_name(project_name_from_log)
+def list_existing_portal_diagram_dirs():
+    """Имена существующих подпапок в data/diagrams."""
+    if not os.path.isdir(NEW_PORTAL_DIAGRAMS_PATH):
+        return []
+    out = []
+    try:
+        for name in os.listdir(NEW_PORTAL_DIAGRAMS_PATH):
+            p = os.path.join(NEW_PORTAL_DIAGRAMS_PATH, name)
+            if os.path.isdir(p):
+                out.append(name)
+    except OSError:
+        pass
+    return out
+
+
+def extract_project_match_keys(project_name):
+    """Ключи от более специфичного к общему (номер проекта из поля лога)."""
+    s = project_name.strip()
+    keys = []
+    m = re.match(r"^(\d+N\d+)", s, re.I)
+    if m:
+        keys.append(m.group(1))
+    m2 = re.match(r"^(\d+)", s)
+    if m2:
+        d = m2.group(1)
+        if d not in keys:
+            keys.append(d)
+    return keys
+
+
+def dir_matches_project_key(dir_name, key):
+    """Совпадение имени папки с ключом номера проекта."""
+    if dir_name == key:
+        return True
+    if dir_name.startswith(key + "_"):
+        return True
+    if key.isdigit() and re.match(r"^" + re.escape(key) + r"N\d", dir_name, re.I):
+        return True
+    return False
+
+
+def _count_files_in_diagram_dir(dir_name):
+    base = os.path.join(NEW_PORTAL_DIAGRAMS_PATH, dir_name)
+    try:
+        return sum(
+            1
+            for n in os.listdir(base)
+            if os.path.isfile(os.path.join(base, n))
+            and n not in ("diagram_titles.json", "diagram_titles.local.json", DIAGRAM_PDMS_AT_FILENAME)
+        )
+    except OSError:
+        return 0
+
+
+def pick_canonical_dir(candidates):
+    """При нескольких кандидатах с одним номером — папка с большим числом файлов (основной проект)."""
+    if not candidates:
+        return ""
+    if len(candidates) == 1:
+        return candidates[0]
+    return max(candidates, key=lambda d: (_count_files_in_diagram_dir(d), len(d), d))
+
+
+def resolve_portal_diagram_folder(project_name_from_log, existing_dirs):
+    """
+    Итоговое имя подпапки в data/diagrams: привязка к уже существующей папке по номеру проекта,
+    чтобы русское и английское название в логе не создавали две папки.
+    """
+    sk = special_project_key(project_name_from_log)
+    if sk is not None:
+        return portal_diagrams_subdir(canonical_portal_folder_name(project_name_from_log))
+
+    keys = extract_project_match_keys(project_name_from_log)
+    if not keys:
+        return portal_diagrams_subdir(canonical_portal_folder_name(project_name_from_log))
+
+    for key in keys:
+        matched = [d for d in existing_dirs if dir_matches_project_key(d, key)]
+        if matched:
+            chosen = pick_canonical_dir(matched)
+            if len(matched) > 1 and key not in _warned_ambiguous_folder_keys:
+                _warned_ambiguous_folder_keys.add(key)
+                log(
+                    f"Несколько папок для ключа «{key}»: выбрана «{chosen}» ({len(matched)} совпад.)",
+                    level=logging.WARNING,
+                )
+            return chosen
+
+    primary = keys[0]
+    safe = re.sub(r"[^\w\-]", "_", primary).strip("_")
+    if safe:
+        return safe
+    return portal_diagrams_subdir(canonical_portal_folder_name(project_name_from_log))
+
+
+def sharepoint_folder_from_resolved(resolved_subdir):
+    """Имя папки проекта на SharePoint из имени каталога портала (подчёркивания → пробелы)."""
+    if not resolved_subdir:
+        return resolved_subdir
+    return resolved_subdir.replace("_", " ")
 
 
 def get_latest_dated_folder(diagrams_root, label=""):
@@ -381,6 +488,7 @@ def sync_diagram_titles_from_log():
     updated = 0
     missing_file = 0
     parsed_ok = 0
+    existing = list_existing_portal_diagram_dirs()
     for log_path in paths:
         lines, _enc = read_text_file_encodings(log_path)
         for line in lines:
@@ -389,7 +497,7 @@ def sync_diagram_titles_from_log():
                 continue
             parsed_ok += 1
             project, title, filename = parsed
-            sub = portal_diagrams_subdir(project)
+            sub = resolve_portal_diagram_folder(project, existing)
             dest_dir = os.path.join(NEW_PORTAL_DIAGRAMS_PATH, sub)
             dest_file = os.path.join(dest_dir, filename)
             if not os.path.isfile(dest_file):
@@ -446,27 +554,55 @@ def _merge_diagram_title(dest_dir, filename, title):
         json.dump(titles, f, ensure_ascii=False, indent=2)
 
 
-def copy_to_new_portal(source_path, project, filename, title):
-    """Копирует файл в папку нового портала data/diagrams/{project}/ и пишет заголовок в diagram_titles.json."""
+def _merge_diagram_pdms_at(dest_dir, filename, iso_ts):
+    """Дата/время добавления файла на портал из выгрузки PDMS (RFC3339)."""
+    meta_path = os.path.join(dest_dir, DIAGRAM_PDMS_AT_FILENAME)
+    data = {}
+    if os.path.isfile(meta_path):
+        try:
+            with open(meta_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            if not isinstance(data, dict):
+                data = {}
+        except (OSError, json.JSONDecodeError):
+            data = {}
+    data[filename] = iso_ts
+    with open(meta_path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+def copy_to_new_portal(source_path, project, filename, title, existing_dirs, import_ts_iso=None):
+    """
+    Копирует файл в data/diagrams/<resolved>/; папка выбирается по номеру проекта (см. resolve_portal_diagram_folder).
+    Возвращает (успех, имя подпапки).
+    """
+    if import_ts_iso is None:
+        import_ts_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     try:
-        safe_project = portal_diagrams_subdir(project)
-        dest_dir = os.path.join(NEW_PORTAL_DIAGRAMS_PATH, safe_project)
+        resolved = resolve_portal_diagram_folder(project, existing_dirs)
+        dest_dir = os.path.join(NEW_PORTAL_DIAGRAMS_PATH, resolved)
         os.makedirs(dest_dir, exist_ok=True)
         dest_path = os.path.join(dest_dir, filename)
         shutil.copy2(source_path, dest_path)
         _merge_diagram_title(dest_dir, filename, title)
-        log(f"[OK] В портал: {dest_path}", level=logging.DEBUG)
-        return True
+        _merge_diagram_pdms_at(dest_dir, filename, import_ts_iso)
+        if resolved not in existing_dirs:
+            existing_dirs.append(resolved)
+        log(f"[OK] В портал: {dest_path} (каталог «{resolved}»)", level=logging.DEBUG)
+        return True, resolved
     except Exception as e:
         log(f"[WARN] Не скопировать в портал: {e}", level=logging.WARNING)
-        return False
+        return False, ""
 
 
-def publish_file(input_line, file_index, total_files, special_latest=None, local_only=False):
+def publish_file(input_line, file_index, total_files, special_latest=None, local_only=False, existing_dirs=None):
     """
     Копирует файл в data/diagrams. Если local_only=False, также загружает в SharePoint.
     Для проектов из SPECIAL_DIAGRAM_ROOTS источник — последняя датированная папка (special_latest).
+    existing_dirs — кэш имён подпапок data/diagrams (обновляется при появлении новых).
     """
+    if existing_dirs is None:
+        existing_dirs = list_existing_portal_diagram_dirs()
     try:
         parts = input_line.strip().split(';')
         if len(parts) < 5:
@@ -493,13 +629,14 @@ def publish_file(input_line, file_index, total_files, special_latest=None, local
             return False, "Файл не найден"
 
         # Всегда копируем в папку портала (data/diagrams)
-        if copy_to_new_portal(source_path, project, filename, title):
+        ok, resolved = copy_to_new_portal(source_path, project, filename, title, existing_dirs)
+        if ok:
             if local_only:
                 return True, "Скопировано в портал"
 
             # Загрузка в SharePoint (если не local_only и сеть доступна)
             try:
-                sp_folder = sharepoint_project_folder(project)
+                sp_folder = sharepoint_folder_from_resolved(resolved)
                 base = PROJECTS_BASE_URL.rstrip("/")
                 dest_url = f"{base}/{'/'.join([quote(sp_folder, safe=''), quote(PID_DIR_NAME, safe=''), quote(filename, safe='')])}"
                 dest_path = os.path.join(PROJECTS_BASE_PATH, sp_folder, PID_DIR_NAME)
@@ -642,9 +779,17 @@ if __name__ == "__main__":
     uploaded = 0
     failed = 0
     failed_details = []
+    existing_portal_dirs = list_existing_portal_diagram_dirs()
 
     for i, line in enumerate(entries, 1):
-        result, message = publish_file(line, i, len(entries), special_latest=special_latest, local_only=local_only)
+        result, message = publish_file(
+            line,
+            i,
+            len(entries),
+            special_latest=special_latest,
+            local_only=local_only,
+            existing_dirs=existing_portal_dirs,
+        )
         if result:
             uploaded += 1
         else:

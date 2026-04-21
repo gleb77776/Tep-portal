@@ -62,7 +62,6 @@ func registerHeroFromDir(r *gin.Engine, pubDir string) bool {
 }
 
 func main() {
-	// Если `.env` отсутствует, но есть `.env.example`, возьмём настройки оттуда (для dev).
 	if err := godotenv.Load(); err != nil {
 		_ = godotenv.Load(".env.example")
 	}

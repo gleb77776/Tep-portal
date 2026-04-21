@@ -117,6 +117,13 @@ function ProjectDocumentsPage({ onOpenDocument, scope, variant }) {
     [documents, filterType, searchQuery]
   );
 
+  const formatDocDate = (iso) => {
+    if (!iso || typeof iso !== 'string') return '';
+    const t = Date.parse(iso);
+    if (Number.isNaN(t)) return iso;
+    return new Date(t).toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short' });
+  };
+
   const iconForExt = (ext) => {
     const e = (ext || '').toLowerCase();
     if (e === 'pdf') return '📄';
@@ -225,7 +232,11 @@ function ProjectDocumentsPage({ onOpenDocument, scope, variant }) {
                       <span className="doc-name">{doc.name}</span>
                       <span className="doc-meta">
                         {doc.addedBy ? `Добавил: ${doc.addedBy}` : ''}
-                        {doc.addedAt ? (doc.addedBy ? ` • ${doc.addedAt}` : doc.addedAt) : ''}
+                        {doc.addedAt
+                          ? doc.addedBy
+                            ? ` • ${formatDocDate(doc.addedAt)}`
+                            : formatDocDate(doc.addedAt)
+                          : ''}
                       </span>
                     </div>
                     <div className="doc-actions">

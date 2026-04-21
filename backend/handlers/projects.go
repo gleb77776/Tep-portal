@@ -30,6 +30,8 @@ type AdminProject struct {
 	FolderLink string `json:"folderLink,omitempty"`
 	// DiagramsEnabled: nil = по умолчанию показывать блок «Диаграммы» (глобальные проекты); false — скрыть.
 	DiagramsEnabled *bool `json:"diagramsEnabled,omitempty"`
+	// DiagramsFolderID — имя подпапки в data/diagrams с PDF из PDMS, если оно не совпадает с id (например id «141», папка «141N50_Svobodnenskaya»).
+	DiagramsFolderID string `json:"diagramsFolderId,omitempty"`
 }
 
 type ProjectDocument struct {
@@ -428,6 +430,56 @@ func loadDiagramTitleMap(projectDir string) map[string]string {
 	return out
 }
 
+// loadDiagramPdmsAtMap — даты добавления на портал из скрипта выгрузки PDMS (diagram_pdms_at.json).
+func loadDiagramPdmsAtMap(projectDir string) map[string]string {
+	p := filepath.Join(projectDir, "diagram_pdms_at.json")
+	data, err := os.ReadFile(p)
+	if err != nil {
+		return nil
+	}
+	var m map[string]string
+	if err := json.Unmarshal(data, &m); err != nil {
+		return nil
+	}
+	out := make(map[string]string)
+	for k, v := range m {
+		k = strings.TrimSpace(k)
+		v = strings.TrimSpace(v)
+		if k != "" && v != "" {
+			out[k] = v
+		}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
+
+func validateDiagramsFolderID(s string) error {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return nil
+	}
+	if len([]rune(s)) > 120 {
+		return errors.New("diagramsFolderId too long")
+	}
+	for _, r := range s {
+		ok := (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' || r == '-'
+		if !ok {
+			return errors.New("diagramsFolderId: только буквы, цифры, _ и -")
+		}
+	}
+	return nil
+}
+
+// diagramsStorageSubdir — каталог в data/diagrams для файлов PDMS (URL /diagrams/<subdir>/...).
+func diagramsStorageSubdir(p AdminProject, logicalID string) string {
+	if s := strings.TrimSpace(p.DiagramsFolderID); s != "" {
+		return s
+	}
+	return logicalID
+}
+
 func validateProjectTitle(title string) error {
 	if strings.TrimSpace(title) == "" {
 		return errors.New("title required")
@@ -779,8 +831,9 @@ func UpdateProjectSettings(c *gin.Context) {
 		return
 	}
 	var req struct {
-		FolderLink      string `json:"folderLink"`
-		DiagramsEnabled *bool  `json:"diagramsEnabled"`
+		FolderLink       string  `json:"folderLink"`
+		DiagramsEnabled  *bool   `json:"diagramsEnabled"`
+		DiagramsFolderID *string `json:"diagramsFolderId"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid body"})
@@ -789,6 +842,12 @@ func UpdateProjectSettings(c *gin.Context) {
 	if err := validateFolderLink(strings.TrimSpace(req.FolderLink)); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
+	}
+	if req.DiagramsFolderID != nil {
+		if err := validateDiagramsFolderID(*req.DiagramsFolderID); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
 	}
 
 	projectsMu.Lock()
@@ -814,6 +873,9 @@ func UpdateProjectSettings(c *gin.Context) {
 	for i := range adminList {
 		if adminList[i].ID == projectID {
 			adminList[i].FolderLink = strings.TrimSpace(req.FolderLink)
+			if req.DiagramsFolderID != nil {
+				adminList[i].DiagramsFolderID = strings.TrimSpace(*req.DiagramsFolderID)
+			}
 			if req.DiagramsEnabled != nil {
 				adminList[i].DiagramsEnabled = req.DiagramsEnabled
 			}
@@ -824,6 +886,9 @@ func UpdateProjectSettings(c *gin.Context) {
 	if !found {
 		np := base
 		np.FolderLink = strings.TrimSpace(req.FolderLink)
+		if req.DiagramsFolderID != nil {
+			np.DiagramsFolderID = strings.TrimSpace(*req.DiagramsFolderID)
+		}
 		if req.DiagramsEnabled != nil {
 			np.DiagramsEnabled = req.DiagramsEnabled
 		}
@@ -1054,21 +1119,23 @@ func ListProjectDocuments(c *gin.Context) {
 	}
 
 	showDiagrams := projectDiagramsEnabled(p)
+	diagSub := diagramsStorageSubdir(p, projectID)
 
 	// diagrams docs
 	diagramsDocs := []ProjectDocument{}
 	if (scope == "all" || scope == "diagrams") && showDiagrams {
 		basePath := getDiagramsPathForProjects()
-		projectDir := filepath.Join(basePath, projectID)
+		projectDir := filepath.Join(basePath, diagSub)
 		if _, err := os.Stat(projectDir); err == nil {
 			titleByFile := loadDiagramTitleMap(projectDir)
+			pdmsAtByFile := loadDiagramPdmsAtMap(projectDir)
 			files, _ := os.ReadDir(projectDir)
 			for idx, f := range files {
 				if f.IsDir() {
 					continue
 				}
 				name := f.Name()
-				if name == "diagram_titles.json" {
+				if name == "diagram_titles.json" || name == "diagram_pdms_at.json" {
 					continue
 				}
 				displayName := name
@@ -1079,14 +1146,21 @@ func ListProjectDocuments(c *gin.Context) {
 				}
 				ext := strings.ToLower(strings.TrimPrefix(filepath.Ext(name), "."))
 				addedAt := ""
-				if fi, err := f.Info(); err == nil {
-					addedAt = fi.ModTime().UTC().Format(time.RFC3339)
+				if pdmsAtByFile != nil {
+					if t, ok := pdmsAtByFile[name]; ok && strings.TrimSpace(t) != "" {
+						addedAt = strings.TrimSpace(t)
+					}
+				}
+				if addedAt == "" {
+					if fi, err := f.Info(); err == nil {
+						addedAt = fi.ModTime().UTC().Format(time.RFC3339)
+					}
 				}
 				diagramsDocs = append(diagramsDocs, ProjectDocument{
 					ID:      fmt.Sprintf("diag-%d", idx),
 					Name:    displayName,
 					Ext:     ext,
-					Url:     fmt.Sprintf("/diagrams/%s/%s", projectID, urlPathEscape(name)),
+					Url:     fmt.Sprintf("/diagrams/%s/%s", diagSub, urlPathEscape(name)),
 					AddedBy: "PDMS",
 					AddedAt: addedAt,
 					Source:  "diagrams",

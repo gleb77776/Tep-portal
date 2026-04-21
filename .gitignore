@@ -8,6 +8,7 @@ backend/.env
 node_modules/
 frontend/dist/
 frontend/dist-ssr/
+release/
 
 # Go
 *.exe

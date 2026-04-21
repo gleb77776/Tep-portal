@@ -1,1 +1,114 @@
-[]
+[
+  {
+    "id": "42f38e86-d52e-487e-9688-81b7b39ee504",
+    "surveyId": "2ec91ba9-5429-42db-9b90-7c8023236a90",
+    "submittedAt": "2026-04-02T08:55:03Z",
+    "answers": {
+      "q_58b51870": "фылоафывзлмфыл",
+      "q_9567e09e": [
+        "Вариант 2"
+      ],
+      "q_b7de301b": "Да"
+    }
+  },
+  {
+    "id": "610506e1-b1a6-421f-87df-c1194a098f6c",
+    "surveyId": "2ec91ba9-5429-42db-9b90-7c8023236a90",
+    "submittedAt": "2026-04-02T09:10:01Z",
+    "answers": {
+      "q_58b51870": "укувкаиув",
+      "q_9567e09e": [
+        "Вариант 1",
+        "Вариант 2"
+      ],
+      "q_b7de301b": "Нет"
+    }
+  },
+  {
+    "id": "0b0a54ae-aa7d-4239-b8a3-0536cf24e854",
+    "surveyId": "2ec91ba9-5429-42db-9b90-7c8023236a90",
+    "submittedAt": "2026-04-02T09:10:11Z",
+    "answers": {
+      "q_58b51870": "тси виаив",
+      "q_9567e09e": [
+        "Вариант 2"
+      ],
+      "q_b7de301b": "Да"
+    }
+  },
+  {
+    "id": "b3783631-d018-4418-8b01-f1f8d5034b81",
+    "surveyId": "ddb3c833-3ca0-4ac5-bf19-02188fb2eff4",
+    "submittedAt": "2026-04-02T09:11:31Z",
+    "submittedBy": "BatyanovskiyGV",
+    "answers": {
+      "q_2873f6d6": [
+        "Да"
+      ]
+    }
+  },
+  {
+    "id": "0b641c0e-f2d8-4007-bda8-cb5f75116213",
+    "surveyId": "46316eaf-a8ac-4340-a309-9af76aed1ece",
+    "submittedAt": "2026-04-02T09:30:05Z",
+    "submittedBy": "BatyanovskiyGV",
+    "answers": {
+      "q_5290284c": "ioasdhfpowdhovcwohv",
+      "q_5a97f15a": [
+        "Да",
+        "Нет"
+      ],
+      "q_630bd9ae": "Вариант 2"
+    }
+  },
+  {
+    "id": "22972659-61bb-4c6e-a7a4-4fe96c0287ee",
+    "surveyId": "88f83852-9012-48b2-8200-6a2ed9e3566b",
+    "submittedAt": "2026-04-06T17:56:23Z",
+    "submittedBy": "BatyanovskiyGV",
+    "answers": {
+      "q_47309431": [
+        "Да",
+        "Нет"
+      ]
+    }
+  },
+  {
+    "id": "a736ae4d-c893-401e-a067-791ea4557e1d",
+    "surveyId": "2f098804-a421-4b34-a173-3bba931e2d8c",
+    "submittedAt": "2026-04-10T08:30:05Z",
+    "submittedBy": "BatyanovskiyGV",
+    "answers": {
+      "q_89d5b2f5": "Тест ТЕст",
+      "q_d045abbb": [
+        "Да",
+        "Нет",
+        "Тест"
+      ]
+    }
+  },
+  {
+    "id": "f2ff4f62-e818-414d-908c-5ca32a4c3cd0",
+    "surveyId": "d3963e8f-0b3a-4cf6-962e-306a771f496e",
+    "submittedAt": "2026-04-10T08:37:41Z",
+    "submittedBy": "BatyanovskiyGV",
+    "answers": {
+      "q_9d3f5b9d": [
+        "Нет"
+      ],
+      "q_eb768be2": "Test Otvet"
+    }
+  },
+  {
+    "id": "02a2decd-abce-443a-a138-f8c2749427d1",
+    "surveyId": "c1bcd5b0-97e3-44dd-83cc-d4cca25c508d",
+    "submittedAt": "2026-04-10T08:53:54Z",
+    "submittedBy": "BatyanovskiyGV",
+    "answers": {
+      "q_d5577763": [
+        "Да"
+      ],
+      "q_f5cac06d": "test otvet"
+    }
+  }
+]

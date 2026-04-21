@@ -46,6 +46,40 @@ export default function SectionsScreen({ navigation }: Props) {
           Документы и шаблоны раздела «Бланки» (как на сайте /forms)
         </Text>
       </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[
+          styles.row,
+          {
+            backgroundColor: colors.cardBg,
+            borderColor: colors.cardBorder,
+          },
+        ]}
+        onPress={() => navigation.navigate('Training')}
+        activeOpacity={0.75}
+      >
+        <Text style={[styles.rowTitle, { color: colors.text }]}>Записи с программ обучения</Text>
+        <Text style={[styles.rowHint, { color: colors.textMuted }]}>
+          Материалы и видео раздела «Обучение» (как на сайте /training)
+        </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[
+          styles.row,
+          {
+            backgroundColor: colors.cardBg,
+            borderColor: colors.cardBorder,
+          },
+        ]}
+        onPress={() => navigation.navigate('Sro')}
+        activeOpacity={0.75}
+      >
+        <Text style={[styles.rowTitle, { color: colors.text }]}>СРО</Text>
+        <Text style={[styles.rowHint, { color: colors.textMuted }]}>
+          Документы саморегулируемых организаций (как на сайте /s/sro)
+        </Text>
+      </TouchableOpacity>
     </ScrollView>
   );
 }

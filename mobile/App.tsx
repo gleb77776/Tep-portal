@@ -17,6 +17,8 @@ import SettingsScreen from './src/screens/SettingsScreen';
 import SectionsScreen from './src/screens/SectionsScreen';
 import OhsScreen from './src/screens/OhsScreen';
 import FormsScreen from './src/screens/FormsScreen';
+import TrainingScreen from './src/screens/TrainingScreen';
+import SroScreen from './src/screens/SroScreen';
 import IdentityWelcomeScreen from './src/screens/IdentityWelcomeScreen';
 import HomeHeaderMenuButton from './src/components/HomeHeaderMenuButton';
 import type { RootStackParamList } from './src/navigation/types';
@@ -120,6 +122,22 @@ function RootNavigator() {
           component={FormsScreen}
           options={{
             title: 'Бланки',
+            headerBackTitle: 'Назад',
+          }}
+        />
+        <Stack.Screen
+          name="Training"
+          component={TrainingScreen}
+          options={{
+            title: 'Обучение',
+            headerBackTitle: 'Назад',
+          }}
+        />
+        <Stack.Screen
+          name="Sro"
+          component={SroScreen}
+          options={{
+            title: 'СРО',
             headerBackTitle: 'Назад',
           }}
         />

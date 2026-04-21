@@ -121,3 +121,63 @@ export function buildFormsFileDownloadUrl(relPath: string, fileName: string): st
     relPath === '.' || relPath === '' ? [fileName] : [...relPath.split('/').filter(Boolean), fileName];
   return `${API_BASE_URL}/forms/files/${parts.map((s) => encodeURIComponent(s)).join('/')}`;
 }
+
+/** «Записи с программ обучения» — `handlers.ListTraining`, статика `/training/files/`. */
+export async function fetchTrainingList(relPath: string): Promise<OtListResponse> {
+  const p = relPath === '' ? '.' : relPath;
+  const res = await fetch(`${API_BASE_URL}/api/v1/training/list?path=${encodeURIComponent(p)}`, {
+    headers: { Accept: 'application/json' },
+  });
+  let data: OtListResponse = {};
+  try {
+    data = (await res.json()) as OtListResponse;
+  } catch {
+    return { error: 'Некорректный ответ сервера' };
+  }
+  if (!res.ok) {
+    return { error: typeof data.error === 'string' ? data.error : `Ошибка ${res.status}` };
+  }
+  if (data.error) return data;
+  return {
+    path: data.path ?? p,
+    folders: Array.isArray(data.folders) ? data.folders : [],
+    files: Array.isArray(data.files) ? data.files : [],
+  };
+}
+
+export function buildTrainingFileDownloadUrl(relPath: string, fileName: string): string {
+  const parts =
+    relPath === '.' || relPath === '' ? [fileName] : [...relPath.split('/').filter(Boolean), fileName];
+  return `${API_BASE_URL}/training/files/${parts.map((s) => encodeURIComponent(s)).join('/')}`;
+}
+
+/** Динамические разделы (шаблон documents) — `handlers.ListDynamicDocs`, файлы `/site-files/:slug/...`. */
+export async function fetchDynamicDocsList(slug: string, relPath: string): Promise<OtListResponse> {
+  const p = relPath === '' ? '.' : relPath;
+  const enc = encodeURIComponent(slug);
+  const res = await fetch(
+    `${API_BASE_URL}/api/v1/site-sections/dynamic/${enc}/list?path=${encodeURIComponent(p)}`,
+    { headers: { Accept: 'application/json' } },
+  );
+  let data: OtListResponse = {};
+  try {
+    data = (await res.json()) as OtListResponse;
+  } catch {
+    return { error: 'Некорректный ответ сервера' };
+  }
+  if (!res.ok) {
+    return { error: typeof data.error === 'string' ? data.error : `Ошибка ${res.status}` };
+  }
+  if (data.error) return data;
+  return {
+    path: data.path ?? p,
+    folders: Array.isArray(data.folders) ? data.folders : [],
+    files: Array.isArray(data.files) ? data.files : [],
+  };
+}
+
+export function buildDynamicSiteFileUrl(slug: string, relPath: string, fileName: string): string {
+  const parts =
+    relPath === '.' || relPath === '' ? [fileName] : [...relPath.split('/').filter(Boolean), fileName];
+  return `${API_BASE_URL}/site-files/${encodeURIComponent(slug)}/${parts.map((s) => encodeURIComponent(s)).join('/')}`;
+}

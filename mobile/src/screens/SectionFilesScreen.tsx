@@ -23,6 +23,8 @@ export type SectionFilesConfig = {
   pageTitle: string;
   breadcrumbRoot: string;
   emptyMessage: string;
+  /** Например видео в разделе обучения — подпись «Просмотр», как на сайте. */
+  extraPreviewExtensions?: string[];
 };
 
 type Props = { config: SectionFilesConfig };
@@ -110,7 +112,8 @@ export default function SectionFilesScreen({ config }: Props) {
 
   function canPreview(name: string) {
     const ext = (name || '').split('.').pop()?.toLowerCase() ?? '';
-    return PREVIEW_EXT.includes(ext);
+    const exts = [...PREVIEW_EXT, ...(config.extraPreviewExtensions ?? [])];
+    return exts.includes(ext);
   }
 
   function openFileUrl(name: string) {

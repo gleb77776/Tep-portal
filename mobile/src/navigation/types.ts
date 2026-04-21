@@ -8,4 +8,8 @@ export type RootStackParamList = {
   Ohs: undefined;
   /** Бланки — как /forms на сайте */
   Forms: undefined;
+  /** Записи с программ обучения — как /training */
+  Training: undefined;
+  /** СРО — динамический раздел /s/sro */
+  Sro: undefined;
 };

@@ -5,11 +5,12 @@ type Props = {
   colors: ThemeColors;
   onOpenOhs: () => void;
   onOpenForms: () => void;
+  onOpenTraining: () => void;
   onOpenAll: () => void;
 };
 
-/** Только мобильные разделы: ОТ/ГО/ЧС, Бланки, Все разделы — в одну строку как панель иконок на сайте. */
-export default function HomeIconsBar({ colors, onOpenOhs, onOpenForms, onOpenAll }: Props) {
+/** Мобильные разделы: ОТ/ГО/ЧС, Бланки, обучение, все разделы — в одну строку как панель иконок на сайте. */
+export default function HomeIconsBar({ colors, onOpenOhs, onOpenForms, onOpenTraining, onOpenAll }: Props) {
   const panelBg = colors.mode === 'dark' ? colors.logoStripStart : colors.primary;
   const circleBg = '#ffffff';
   const emojiTint = colors.primary;
@@ -44,6 +45,21 @@ export default function HomeIconsBar({ colors, onOpenOhs, onOpenForms, onOpenAll
           </View>
           <Text style={styles.iconTitle} numberOfLines={2}>
             БЛАНКИ
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.cell}
+          onPress={onOpenTraining}
+          activeOpacity={0.75}
+          accessibilityRole="button"
+          accessibilityLabel="Записи с программ обучения"
+        >
+          <View style={[styles.iconCircle, { backgroundColor: circleBg }]}>
+            <Text style={[styles.iconEmoji, { color: emojiTint }]}>🎓</Text>
+          </View>
+          <Text style={styles.iconTitle} numberOfLines={2}>
+            ОБУЧЕНИЕ
           </Text>
         </TouchableOpacity>
 

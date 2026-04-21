@@ -121,6 +121,7 @@ export default function HomeScreen({ navigation }: Props) {
         colors={colors}
         onOpenOhs={() => navigation.navigate('Ohs')}
         onOpenForms={() => navigation.navigate('Forms')}
+        onOpenTraining={() => navigation.navigate('Training')}
         onOpenAll={() => navigation.navigate('Sections')}
       />
 

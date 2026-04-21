@@ -1,6 +1,6 @@
-import { Alert, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useNavigation } from '@react-navigation/native';
+import { CommonActions, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import LogoHeader from '../components/LogoHeader';
 import { useTheme } from '../context/ThemeContext';
@@ -16,14 +16,12 @@ export default function SettingsScreen() {
 
   async function onLogout() {
     await AsyncStorage.multiRemove([USERNAME_KEY, SNAPSHOT_KEY]);
-    navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
-  }
-
-  function confirmLogout() {
-    Alert.alert('Выход', 'Выйти из аккаунта?', [
-      { text: 'Отмена', style: 'cancel' },
-      { text: 'Выйти', style: 'destructive', onPress: () => void onLogout() },
-    ]);
+    navigation.dispatch(
+      CommonActions.reset({
+        index: 0,
+        routes: [{ name: 'Login' }],
+      })
+    );
   }
 
   return (
@@ -78,7 +76,7 @@ export default function SettingsScreen() {
 
       <TouchableOpacity
         style={[styles.logoutBtn, { borderColor: colors.danger }]}
-        onPress={confirmLogout}
+        onPress={() => void onLogout()}
         activeOpacity={0.85}
       >
         <Text style={[styles.logoutText, { color: colors.danger }]}>Выйти</Text>

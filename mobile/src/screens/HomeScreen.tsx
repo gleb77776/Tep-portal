@@ -14,11 +14,13 @@ import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import LogoHeader from '../components/LogoHeader';
 import { fetchUserMe, type PortalUser } from '../api/client';
+import { getStoredFullNameOverride, hasIdentityAck } from '../utils/identityAckStorage';
 import { useTheme } from '../context/ThemeContext';
 import type { RootStackParamList } from '../navigation/types';
 import type { ThemeColors } from '../theme/colors';
 
 const USERNAME_KEY = 'ad_username';
+const SNAPSHOT_KEY = 'portal_user_snapshot';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
@@ -31,10 +33,21 @@ export default function HomeScreen({ navigation }: Props) {
   const load = async () => {
     const stored = (await AsyncStorage.getItem(USERNAME_KEY))?.trim() ?? '';
     if (!stored) {
+      const snap = await AsyncStorage.getItem(SNAPSHOT_KEY);
+      if (snap) {
+        navigation.replace('IdentityWelcome');
+        return;
+      }
       navigation.replace('Login');
       return;
     }
+    if (!(await hasIdentityAck(stored))) {
+      navigation.replace('IdentityWelcome');
+      return;
+    }
     const data = await fetchUserMe(stored);
+    const ov = await getStoredFullNameOverride(stored);
+    if (ov) data.fullName = ov;
     setUser(data);
   };
 
@@ -69,7 +82,7 @@ export default function HomeScreen({ navigation }: Props) {
   }
 
   async function onLogout() {
-    await AsyncStorage.removeItem(USERNAME_KEY);
+    await AsyncStorage.multiRemove([USERNAME_KEY, SNAPSHOT_KEY]);
     navigation.replace('Login');
   }
 

@@ -15,11 +15,14 @@ import LoginScreen from './src/screens/LoginScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import SectionsScreen from './src/screens/SectionsScreen';
+import IdentityWelcomeScreen from './src/screens/IdentityWelcomeScreen';
 import HeaderSettingsButton from './src/components/HeaderSettingsButton';
 import type { RootStackParamList } from './src/navigation/types';
+import { hasIdentityAck } from './src/utils/identityAckStorage';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const USERNAME_KEY = 'ad_username';
+const SNAPSHOT_KEY = 'portal_user_snapshot';
 
 function buildNavTheme(colors: ThemeColors, mode: ThemeMode): NavigationTheme {
   const base = mode === 'dark' ? NavigationDarkTheme : NavigationDefaultTheme;
@@ -43,10 +46,19 @@ function RootNavigator() {
   const [initial, setInitial] = useState<keyof RootStackParamList>('Login');
 
   useEffect(() => {
-    AsyncStorage.getItem(USERNAME_KEY).then((u) => {
-      setInitial(u?.trim() ? 'Home' : 'Login');
+    (async () => {
+      const u = (await AsyncStorage.getItem(USERNAME_KEY))?.trim() ?? '';
+      const snap = await AsyncStorage.getItem(SNAPSHOT_KEY);
+      if (u) {
+        const done = await hasIdentityAck(u);
+        setInitial(done ? 'Home' : 'IdentityWelcome');
+      } else if (snap) {
+        setInitial('IdentityWelcome');
+      } else {
+        setInitial('Login');
+      }
       setRouteReady(true);
-    });
+    })();
   }, []);
 
   const navTheme = useMemo(() => buildNavTheme(colors, mode), [colors, mode]);
@@ -78,6 +90,11 @@ function RootNavigator() {
         }}
       >
         <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
+        <Stack.Screen
+          name="IdentityWelcome"
+          component={IdentityWelcomeScreen}
+          options={{ headerShown: false }}
+        />
         <Stack.Screen
           name="Home"
           component={HomeScreen}

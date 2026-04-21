@@ -18,16 +18,16 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import LogoHeader from '../components/LogoHeader';
 import { loginAd } from '../api/client';
-import { hasIdentityAck } from '../utils/identityAckStorage';
-import { useTheme } from '../context/ThemeContext';
+import { setIdentityAck } from '../utils/identityAckStorage';
 import type { RootStackParamList } from '../navigation/types';
+import { useTheme } from '../context/ThemeContext';
 
 const USERNAME_KEY = 'ad_username';
 const SNAPSHOT_KEY = 'portal_user_snapshot';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
+type Props = NativeStackScreenProps<RootStackParamList, 'IdentityWelcome'>;
 
-export default function LoginScreen({ navigation }: Props) {
+export default function IdentityWelcomeScreen({ navigation }: Props) {
   const { colors, mode } = useTheme();
   const { width } = useWindowDimensions();
   const cardMax = Math.min(400, width - 40);
@@ -43,22 +43,16 @@ export default function LoginScreen({ navigation }: Props) {
   async function onSubmit() {
     const u = username.trim();
     if (!u || !password) {
-      Alert.alert('Вход', 'Введите логин и пароль домена');
+      Alert.alert('Вход', 'Введите логин и пароль учётной записи домена');
       return;
     }
     setLoading(true);
     try {
-      const profile = await loginAd(u, password);
-      const done = await hasIdentityAck(u);
-      if (done) {
-        await AsyncStorage.setItem(USERNAME_KEY, u);
-        await AsyncStorage.removeItem(SNAPSHOT_KEY);
-        navigation.replace('Home');
-      } else {
-        await AsyncStorage.setItem(SNAPSHOT_KEY, JSON.stringify(profile));
-        await AsyncStorage.removeItem(USERNAME_KEY);
-        navigation.replace('IdentityWelcome');
-      }
+      await loginAd(u, password);
+      await AsyncStorage.setItem(USERNAME_KEY, u);
+      await setIdentityAck(u);
+      await AsyncStorage.removeItem(SNAPSHOT_KEY);
+      navigation.replace('Home');
     } catch (e) {
       Alert.alert('Вход', e instanceof Error ? e.message : 'Не удалось войти');
     } finally {
@@ -92,9 +86,6 @@ export default function LoginScreen({ navigation }: Props) {
                 ]}
               >
                 <Text style={[styles.cardTitle, { color: colors.text }]}>Вход</Text>
-                <Text style={[styles.hint, { color: colors.textMuted }]}>
-                  Учётная запись Active Directory
-                </Text>
                 <Text style={[styles.label, { color: colors.textMuted }]}>Логин</Text>
                 <TextInput
                   style={[
@@ -138,7 +129,7 @@ export default function LoginScreen({ navigation }: Props) {
                     { backgroundColor: colors.buttonPrimary },
                     loading && styles.btnDisabled,
                   ]}
-                  onPress={onSubmit}
+                  onPress={() => void onSubmit()}
                   disabled={loading}
                   activeOpacity={0.88}
                 >
@@ -194,16 +185,8 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '700',
     letterSpacing: 0.3,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  hint: {
-    fontSize: 13,
-    lineHeight: 18,
-    textAlign: 'center',
     marginBottom: 18,
-    paddingHorizontal: 4,
-    opacity: 0.92,
+    textAlign: 'center',
   },
   label: {
     fontSize: 12,
